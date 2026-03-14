@@ -1,137 +1,115 @@
-import type { ISODate } from '../../types/shared.types';
+// Weather integration using Open-Meteo (https://open-meteo.com/).
+// Open-Meteo is a free, no-auth forecast API — no API key required.
 
-export interface WeatherForecast {
-  date: ISODate;
-  temperatureHigh: number; // °C
-  temperatureLow: number;  // °C
-  rainProbability: number; // 0–100
-  windSpeed: number;       // km/h
+import type { WeatherForecast } from '../../features/trips/types/trip';
+
+// Re-export so existing imports from this file (e.g. capsule algorithm) continue to resolve.
+export type { WeatherForecast };
+
+// ---------------------------------------------------------------------------
+// Open-Meteo API contract
+// ---------------------------------------------------------------------------
+
+const OPEN_METEO_BASE_URL = 'https://api.open-meteo.com/v1/forecast';
+
+// Shape of the "daily" object returned by Open-Meteo when the query params
+// daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max are sent.
+interface OpenMeteoDailyResponse {
+  time: string[];
+  temperature_2m_max: number[];
+  temperature_2m_min: number[];
+  precipitation_probability_max: number[];
 }
 
-export interface IWeatherService {
-  getWeatherForecast(
-    destination: string,
-    startDate: ISODate,
-    endDate: ISODate,
-  ): Promise<WeatherForecast[]>;
+interface OpenMeteoApiResponse {
+  daily: OpenMeteoDailyResponse;
 }
 
-// --- Cache placeholder ---
-// TODO: replace with a real caching layer (e.g. Redis, Vercel KV, or in-memory LRU)
-// Cache key: `${destination}:${startDate}:${endDate}`
-const cache = new Map<string, { forecasts: WeatherForecast[]; cachedAt: number }>();
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 500;
-
-export class WeatherService implements IWeatherService {
-  private readonly apiKey: string;
-  private readonly baseUrl: string;
-
-  constructor() {
-    const apiKey = process.env.WEATHER_API_KEY;
-    if (!apiKey) throw new Error('WEATHER_API_KEY environment variable is not set');
-    this.apiKey = apiKey;
-
-    // TODO: move base URL to an environment variable (e.g. WEATHER_API_BASE_URL)
-    // TODO: decide which weather provider to use (e.g. Open-Meteo, WeatherAPI, Tomorrow.io)
-    this.baseUrl = 'https://api.example-weather-provider.com/v1';
-  }
-
-  async getWeatherForecast(
-    destination: string,
-    startDate: ISODate,
-    endDate: ISODate,
-  ): Promise<WeatherForecast[]> {
-    validateInput(destination, startDate, endDate);
-
-    const cacheKey = `${destination}:${startDate}:${endDate}`;
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
-      return cached.forecasts;
-    }
-
-    const forecasts = await fetchWithRetry(
-      () => this.fetchForecast(destination, startDate, endDate),
-      MAX_RETRIES,
-      RETRY_DELAY_MS,
-    );
-
-    // TODO: persist to a durable cache instead of in-memory Map
-    cache.set(cacheKey, { forecasts, cachedAt: Date.now() });
-
-    return forecasts;
-  }
-
-  private async fetchForecast(
-    destination: string,
-    startDate: ISODate,
-    endDate: ISODate,
-  ): Promise<WeatherForecast[]> {
-    // TODO: geocode `destination` string → lat/lon before calling the forecast endpoint
-    // TODO: replace query param names with the chosen provider's actual API contract
-    const url = new URL(`${this.baseUrl}/forecast`);
-    url.searchParams.set('location', destination);
-    url.searchParams.set('start_date', startDate);
-    url.searchParams.set('end_date', endDate);
-    url.searchParams.set('apikey', this.apiKey);
-
-    const response = await fetch(url.toString());
-
-    if (!response.ok) {
-      throw new Error(`Weather API request failed: ${response.status} ${response.statusText}`);
-    }
-
-    const json = await response.json();
-
-    // TODO: replace with real response-shape mapping once provider is chosen
-    return parseApiResponse(json);
-  }
-}
-
-// --- Retry logic ---
-
-async function fetchWithRetry<T>(
-  fn: () => Promise<T>,
-  retries: number,
-  delayMs: number,
-): Promise<T> {
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (attempt < retries) {
-        await sleep(delayMs * attempt); // linear back-off
-      }
-    }
-  }
-
-  throw new Error(
-    `Failed to fetch weather forecast after ${retries} attempts: ${(lastError as Error).message}`,
+/**
+ * Fetch a daily weather forecast from Open-Meteo for the given coordinates.
+ *
+ * Open-Meteo returns up to 16 days of forecast by default; the result is not
+ * sliced here so callers can filter by trip date range if needed.
+ *
+ * @param latitude  Decimal degrees, e.g. 48.8566 (Paris)
+ * @param longitude Decimal degrees, e.g. 2.3522 (Paris)
+ * @returns         Array of WeatherForecast, one entry per forecasted day.
+ *
+ * @throws          If the HTTP request fails or the response shape is invalid.
+ *
+ * TODO: Add a caching layer here (e.g. in-memory LRU or Redis) keyed on
+ *       `${latitude},${longitude}` with a 30-minute TTL to avoid redundant
+ *       network calls when multiple users plan trips to the same destination.
+ */
+export async function getWeatherForecast(
+  latitude: number,
+  longitude: number,
+): Promise<WeatherForecast[]> {
+  // --- Build request URL ---
+  // Open-Meteo requires lat/lon plus the specific daily variables to include.
+  const url = new URL(OPEN_METEO_BASE_URL);
+  url.searchParams.set('latitude', String(latitude));
+  url.searchParams.set('longitude', String(longitude));
+  url.searchParams.set(
+    'daily',
+    'temperature_2m_max,temperature_2m_min,precipitation_probability_max',
   );
+  // timezone=auto tells Open-Meteo to infer the timezone from the coordinates,
+  // which keeps dates aligned to local time at the destination.
+  url.searchParams.set('timezone', 'auto');
+
+  // --- Fetch from Open-Meteo ---
+  let response: Response;
+  try {
+    response = await fetch(url.toString());
+  } catch (networkError) {
+    throw new Error(
+      `Failed to reach Open-Meteo API: ${(networkError as Error).message}`,
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `Open-Meteo API returned ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const json: OpenMeteoApiResponse = await response.json();
+
+  // --- Map response to domain type ---
+  // Open-Meteo returns parallel arrays under `daily`; we zip them by index.
+  return parseOpenMeteoResponse(json);
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+// ---------------------------------------------------------------------------
+// Response mapping (internal)
+// ---------------------------------------------------------------------------
 
-// --- Validation ---
+/**
+ * Convert the Open-Meteo API response into our domain WeatherForecast[].
+ *
+ * Mapping:
+ *   daily.time[i]                          → date
+ *   daily.temperature_2m_max[i]            → temperatureHigh
+ *   daily.temperature_2m_min[i]            → temperatureLow
+ *   daily.precipitation_probability_max[i] → rainProbability
+ */
+function parseOpenMeteoResponse(json: OpenMeteoApiResponse): WeatherForecast[] {
+  const { time, temperature_2m_max, temperature_2m_min, precipitation_probability_max } =
+    json.daily;
 
-function validateInput(destination: string, startDate: ISODate, endDate: ISODate): void {
-  if (!destination?.trim()) throw new Error('destination is required');
-  if (!startDate) throw new Error('startDate is required');
-  if (!endDate) throw new Error('endDate is required');
-  if (endDate < startDate) throw new Error('endDate must be on or after startDate');
-}
+  if (!Array.isArray(time) || time.length === 0) {
+    throw new Error('Open-Meteo response contained no forecast days');
+  }
 
-// --- Response parsing ---
-
-// TODO: implement once the weather provider's response shape is known
-// Expected fields to map: daily high/low temps, precipitation probability, wind speed
-function parseApiResponse(_json: unknown): WeatherForecast[] {
-  throw new Error('parseApiResponse is not yet implemented — awaiting provider selection');
+  return time.map((date, i) => ({
+    date,
+    temperatureHigh: temperature_2m_max[i],
+    temperatureLow: temperature_2m_min[i],
+    rainProbability: precipitation_probability_max[i],
+  }));
 }
