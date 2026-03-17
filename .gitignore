@@ -1,3 +1,26 @@
-CLAUDE.md
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Build output
+dist/
+
+# Environment variables — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# TypeScript incremental build info
+*.tsbuildinfo
+next-env.d.ts
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+
+# Claude Code
 .claude/
-.claude/*
