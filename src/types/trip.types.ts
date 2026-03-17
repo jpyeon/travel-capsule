@@ -1,5 +1,8 @@
 import type { ISODate, ISODateTime } from './shared.types';
 import type { ClosetItem } from './wardrobe.types';
+// WeatherForecast is defined in the features/trips module (source of truth) and
+// re-exported here so global-types consumers get the canonical shape.
+export type { WeatherForecast } from '../features/trips/types/trip';
 
 export type TripActivity =
   | 'beach'
@@ -28,15 +31,6 @@ export type WeatherCondition =
   | 'stormy'
   | 'foggy'
   | 'partly-cloudy';
-
-export interface WeatherForecast {
-  date: ISODate;
-  location: string;
-  tempHighC: number;
-  tempLowC: number;
-  condition: WeatherCondition;
-  precipitationChance: number;
-}
 
 export interface Trip {
   id: string;

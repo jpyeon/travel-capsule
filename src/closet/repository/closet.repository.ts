@@ -24,9 +24,11 @@ export class ClosetRepository implements IClosetRepository {
         user_id: userId,
         category: data.category,
         color: data.color,
+        material: data.material,
         warmth: data.warmth,
         formality: data.formality,
         image_url: data.imageUrl ?? null,
+        tags: data.tags ?? [],
       })
       .select()
       .single();
@@ -52,9 +54,11 @@ export class ClosetRepository implements IClosetRepository {
     const patch: Record<string, unknown> = {};
     if (data.category !== undefined) patch.category = data.category;
     if (data.color !== undefined) patch.color = data.color;
+    if (data.material !== undefined) patch.material = data.material;
     if (data.warmth !== undefined) patch.warmth = data.warmth;
     if (data.formality !== undefined) patch.formality = data.formality;
     if (data.imageUrl !== undefined) patch.image_url = data.imageUrl;
+    if (data.tags !== undefined) patch.tags = data.tags;
 
     const { data: row, error } = await this.supabase
       .from(TABLE)
@@ -85,9 +89,11 @@ function toClosetItem(row: Record<string, unknown>): ClosetItem {
     userId: row.user_id as string,
     category: row.category as ClosetItem['category'],
     color: row.color as string,
+    material: row.material as string,
     warmth: row.warmth as ClosetItem['warmth'],
     formality: row.formality as ClosetItem['formality'],
     imageUrl: (row.image_url as string | null) ?? null,
+    tags: (row.tags as string[]) ?? [],
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
