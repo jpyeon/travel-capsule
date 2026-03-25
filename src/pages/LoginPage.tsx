@@ -1,0 +1,134 @@
+import { useState, type FormEvent } from 'react';
+import type { NextPage } from 'next';
+import { useRouter } from 'next/router';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/shared/Button';
+
+const LoginPage: NextPage = () => {
+  const router = useRouter();
+  const { userId, loading: authLoading } = useAuth();
+
+  const [mode, setMode]           = useState<'login' | 'signup'>('login');
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [signupSuccess, setSignupSuccess] = useState(false);
+
+  // Redirect if already signed in
+  if (!authLoading && userId) {
+    void router.replace('/TripPage');
+    return null;
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      if (mode === 'login') {
+        const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+        if (authError) throw authError;
+        // onAuthStateChange will update context → redirect happens above
+      } else {
+        const { error: authError } = await supabase.auth.signUp({ email, password });
+        if (authError) throw authError;
+        setSignupSuccess(true);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (authLoading) {
+    return (
+      <main className="flex min-h-[80vh] items-center justify-center">
+        <p className="text-gray-400">Loading...</p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="flex min-h-[80vh] items-center justify-center p-8">
+      <div className="w-full max-w-sm">
+        <h1 className="mb-6 text-2xl font-bold text-center">
+          {mode === 'login' ? 'Sign in' : 'Create account'}
+        </h1>
+
+        {signupSuccess ? (
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+            Check your email for a confirmation link, then sign in.
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-600">Email</label>
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={INPUT_CLS}
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-600">Password</label>
+              <input
+                required
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={INPUT_CLS}
+                minLength={6}
+                placeholder="At least 6 characters"
+              />
+            </div>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <Button type="submit" loading={submitting}>
+              {mode === 'login' ? 'Sign in' : 'Create account'}
+            </Button>
+
+            <p className="text-center text-sm text-gray-500">
+              {mode === 'login' ? (
+                <>
+                  Don&apos;t have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setMode('signup'); setError(null); }}
+                    className="font-medium text-black hover:underline"
+                  >
+                    Sign up
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setMode('login'); setError(null); setSignupSuccess(false); }}
+                    className="font-medium text-black hover:underline"
+                  >
+                    Sign in
+                  </button>
+                </>
+              )}
+            </p>
+          </form>
+        )}
+      </div>
+    </main>
+  );
+};
+
+export default LoginPage;
+
+const INPUT_CLS =
+  'rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-1';

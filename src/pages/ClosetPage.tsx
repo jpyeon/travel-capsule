@@ -1,9 +1,10 @@
 // Route-level component for the digital wardrobe view.
 // Delegates data fetching and state to useCloset hook; no business logic here.
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { NextPage } from 'next';
-import { supabase } from '../lib/supabase';
+import { useRouter } from 'next/router';
+import { useAuth } from '../contexts/AuthContext';
 import { useCloset } from '../hooks/useCloset';
 import type {
   ClosetItem,
@@ -73,13 +74,13 @@ function parseTags(raw: string): string[] {
 // ---------------------------------------------------------------------------
 
 const ClosetPage: NextPage = () => {
-  const [userId, setUserId] = useState<string | null>(null);
+  const router = useRouter();
+  const { userId, loading: authLoading } = useAuth();
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
-    });
-  }, []);
+  if (!authLoading && !userId) {
+    void router.replace('/LoginPage');
+    return null;
+  }
 
   const { items, loading, error, addItem, updateItem, removeItem } = useCloset(userId ?? '');
 

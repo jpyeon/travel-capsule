@@ -1,9 +1,10 @@
 // Route-level component for the trip management view.
 // Delegates data fetching and state to useTrip hook; no business logic here.
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { NextPage } from 'next';
-import { supabase } from '../lib/supabase';
+import { useRouter } from 'next/router';
+import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../hooks/useTrip';
 import type { Trip, CreateTripInput, UpdateTripInput } from '../features/trips/types/trip';
 import type { TripActivity, TripVibe } from '../types';
@@ -65,13 +66,14 @@ function tripToFormState(trip: Trip): TripFormState {
 // ---------------------------------------------------------------------------
 
 const TripPage: NextPage = () => {
-  const [userId, setUserId] = useState<string | null>(null);
+  const router = useRouter();
+  const { userId, loading: authLoading } = useAuth();
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
-    });
-  }, []);
+  // Redirect to login if not authenticated
+  if (!authLoading && !userId) {
+    void router.replace('/LoginPage');
+    return null;
+  }
 
   const { trips, loading, error, createTrip, updateTrip, deleteTrip } = useTrip(userId ?? '');
 
@@ -187,7 +189,7 @@ const TripPage: NextPage = () => {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">My Trips</h1>
-        <Button onClick={openCreate} disabled={!userId}>New trip</Button>
+        <Button onClick={openCreate}>New trip</Button>
       </div>
 
       {/* Loading */}
@@ -208,7 +210,7 @@ const TripPage: NextPage = () => {
       {!loading && !error && trips.length === 0 && (
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <p className="text-gray-500">No trips yet.</p>
-          <Button onClick={openCreate} disabled={!userId}>Plan your first trip</Button>
+          <Button onClick={openCreate}>Plan your first trip</Button>
         </div>
       )}
 

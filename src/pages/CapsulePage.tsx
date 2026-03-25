@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../hooks/useTrip';
 import { useCloset } from '../hooks/useCloset';
 import { useCapsuleWardrobe } from '../hooks/useCapsuleWardrobe';
@@ -21,15 +21,15 @@ import { Button } from '../components/shared/Button';
 // ---------------------------------------------------------------------------
 
 const CapsulePage: NextPage = () => {
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
-    });
-  }, []);
+  const { userId, loading: authLoading } = useAuth();
 
   const router = useRouter();
+
+  if (!authLoading && !userId) {
+    void router.replace('/LoginPage');
+    return null;
+  }
+
   const queryTripId = typeof router.query.tripId === 'string' ? router.query.tripId : '';
 
   const { trips, loading: tripsLoading } = useTrip(userId ?? '');
