@@ -1,13 +1,12 @@
-import type { ClosetItem, Trip, CapsuleWardrobe } from '../../types';
+import type { ClosetItem, CapsuleWardrobe } from '../../types';
+import type { Trip } from '../../features/trips/types/trip';
+import { generateCapsuleWardrobe as _generate } from './capsuleGenerator';
 
-// Pure function: no DB, no HTTP, no React.
-// Selects a minimal set of closet items that covers all activities and weather for a trip.
-
-// TODO: implement capsule wardrobe generation logic
-
-export function generateCapsuleWardrobe(
-  _trip: Trip,
-  _closet: ClosetItem[]
-): CapsuleWardrobe {
-  throw new Error('Not implemented');
+export function generateCapsuleWardrobe(trip: Trip, closet: ClosetItem[]): CapsuleWardrobe {
+  const result = _generate(closet, trip.weatherForecast, trip.activities, trip.vibe);
+  return {
+    tripId: trip.id,
+    items: result.items,
+    generatedAt: new Date().toISOString(),
+  };
 }

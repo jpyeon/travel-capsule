@@ -14,7 +14,7 @@
  *   5. Fill            — append highest-scoring unused items until cap is reached
  */
 
-import type { ClosetItem, ClothingCategory } from '../../types';
+import type { ClosetItem, ClothingCategory, TripActivity, TripVibe, FormalityLevel } from '../../types';
 import type { WeatherForecast } from '../../services/weather/weatherService';
 
 // ---------------------------------------------------------------------------
@@ -35,6 +35,10 @@ export interface ItemScore {
     tags: number;
     /** −0.5 if trip is rainy and the item is not tagged 'waterproof', else 0 */
     rainPenalty: number;
+    /** max bonus across all trip activities (category + formality match) */
+    activityBonus: number;
+    /** formality-match bonus derived from trip vibe, weighted 0.5× */
+    vibeBonus: number;
   };
 }
 
@@ -64,6 +68,26 @@ const HOT_THRESHOLD_C  = 21; // ≈ 70 °F
 /** Rain-risk % above which waterproof preference kicks in. */
 const RAIN_RISK_THRESHOLD = 40;
 
+const ACTIVITY_PREFERENCES: Record<TripActivity, { formality: 'low' | 'mid' | 'high'; categories: ClothingCategory[] }> = {
+  beach:       { formality: 'low',  categories: ['activewear', 'dresses'] },
+  hiking:      { formality: 'low',  categories: ['activewear', 'outerwear'] },
+  skiing:      { formality: 'low',  categories: ['activewear', 'outerwear'] },
+  business:    { formality: 'high', categories: ['tops', 'bottoms', 'outerwear', 'footwear', 'accessories'] },
+  dining:      { formality: 'mid',  categories: ['tops', 'bottoms', 'dresses', 'footwear', 'accessories'] },
+  nightlife:   { formality: 'mid',  categories: ['dresses', 'tops', 'accessories'] },
+  sightseeing: { formality: 'low',  categories: ['tops', 'bottoms', 'outerwear', 'footwear'] },
+  casual:      { formality: 'low',  categories: ['tops', 'bottoms', 'footwear'] },
+};
+
+const VIBE_FORMALITY_TARGET: Record<TripVibe, 'low' | 'mid' | 'high'> = {
+  relaxed:     'low',
+  adventurous: 'low',
+  backpacker:  'low',
+  family:      'low',
+  romantic:    'mid',
+  formal:      'high',
+};
+
 /**
  * Minimum items that must be included per category.
  * The generator will try to satisfy these before filling remaining slots.
@@ -90,7 +114,8 @@ const CATEGORY_MINIMUMS: Partial<Record<ClothingCategory, number>> = {
 export function generateCapsuleWardrobe(
   closetItems: ClosetItem[],
   weatherForecast: WeatherForecast[],
-  _activities: string[],
+  activities: TripActivity[],
+  vibe: TripVibe,
 ): CapsuleWardrobe {
   // --- Step 1: Assess weather conditions ---
   const { avgTemp, rainRisk } = assessWeather(weatherForecast);
@@ -101,7 +126,7 @@ export function generateCapsuleWardrobe(
   // --- Step 3: Score every suitable item once ---
   // Scoring happens before selection so both the mandatory phase and the
   // filler phase always pick the best available item per category.
-  const scores = scoreItems(suitable, rainRisk);
+  const scores = scoreItems(suitable, rainRisk, activities, vibe);
   const scoreById = new Map(scores.map((s) => [s.itemId, s]));
 
   // --- Steps 4 & 5: Build the capsule ---
@@ -225,7 +250,27 @@ function filterByWeather(
  *                     'waterproof' tag, nudging the selection toward
  *                     rain-appropriate items
  */
-function scoreItems(items: ClosetItem[], rainRisk: number): ItemScore[] {
+function formalityMatchBonus(itemFormality: FormalityLevel, target: 'low' | 'mid' | 'high'): number {
+  if (target === 'low'  && itemFormality <= 2) return 0.3;
+  if (target === 'mid'  && itemFormality >= 2 && itemFormality <= 4) return 0.2;
+  if (target === 'high' && itemFormality >= 4) return 0.3;
+  return 0;
+}
+
+function activityBonusForItem(item: ClosetItem, activities: TripActivity[]): number {
+  return Math.max(0, ...activities.map((activity) => {
+    const pref = ACTIVITY_PREFERENCES[activity];
+    const categoryMatch = pref.categories.includes(item.category) ? 0.2 : 0;
+    const formalityMatch = formalityMatchBonus(item.formalityScore, pref.formality);
+    return categoryMatch + formalityMatch;
+  }));
+}
+
+function vibeBonusForItem(item: ClosetItem, vibe: TripVibe): number {
+  return formalityMatchBonus(item.formalityScore, VIBE_FORMALITY_TARGET[vibe]) * 0.5;
+}
+
+function scoreItems(items: ClosetItem[], rainRisk: number, activities: TripActivity[], vibe: TripVibe): ItemScore[] {
   return items.map((item) => {
     const warmth    = item.warmthScore    * 0.3;
     const formality = item.formalityScore * 0.2;
@@ -237,12 +282,15 @@ function scoreItems(items: ClosetItem[], rainRisk: number): ItemScore[] {
         ? 0.5
         : 0;
 
-    const versatilityScore = Math.max(0, warmth + formality + tags - rainPenalty);
+    const activityBonus = activityBonusForItem(item, activities);
+    const vibeBonus     = vibeBonusForItem(item, vibe);
+
+    const versatilityScore = Math.max(0, warmth + formality + tags + activityBonus + vibeBonus - rainPenalty);
 
     return {
       itemId: item.id,
       versatilityScore,
-      breakdown: { warmth, formality, tags, rainPenalty },
+      breakdown: { warmth, formality, tags, rainPenalty, activityBonus, vibeBonus },
     };
   });
 }
