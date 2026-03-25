@@ -8,6 +8,7 @@ export type { ClothingCategory, WarmthLevel, FormalityLevel };
 export interface ClosetItem {
   id: string;
   userId: string;
+  name: string;
   category: ClothingCategory;
   color: string;
   material: string;
@@ -21,6 +22,7 @@ export interface ClosetItem {
 }
 
 export interface CreateClosetItemInput {
+  name: string;
   category: ClothingCategory;
   color: string;
   material: string;
@@ -31,6 +33,7 @@ export interface CreateClosetItemInput {
 }
 
 export interface UpdateClosetItemInput {
+  name?: string;
   category?: ClothingCategory;
   color?: string;
   material?: string;

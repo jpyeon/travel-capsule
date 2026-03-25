@@ -14,6 +14,7 @@ function makeItem(
   return {
     id,
     userId: 'user-test',
+    name: 'Test item',
     category: 'tops',
     color: 'black',
     material: 'cotton',
@@ -111,22 +112,15 @@ describe('clothing aggregation', () => {
 // ---------------------------------------------------------------------------
 
 describe('accessory collection', () => {
-  it('collects accessories as human-readable labels', () => {
-    const acc = makeItem('acc-1', { category: 'accessories', color: 'black' });
+  it('collects accessories using item name', () => {
+    const acc = makeItem('acc-1', { category: 'accessories', name: 'Black belt' });
     const { accessories } = generatePackingList([makeOutfit('2026-04-01', [acc])]);
 
-    expect(accessories).toContain('Black accessories');
-  });
-
-  it('capitalises the color correctly in the label', () => {
-    const acc = makeItem('acc-1', { category: 'accessories', color: 'navy' });
-    const { accessories } = generatePackingList([makeOutfit('2026-04-01', [acc])]);
-
-    expect(accessories).toContain('Navy accessories');
+    expect(accessories).toContain('Black belt');
   });
 
   it('deduplicates accessories by item ID across multiple outfits', () => {
-    const acc = makeItem('acc-1', { category: 'accessories', color: 'black' });
+    const acc = makeItem('acc-1', { category: 'accessories', name: 'Wool scarf' });
 
     const outfits = [
       makeOutfit('2026-04-01', [acc]),
@@ -138,26 +132,26 @@ describe('accessory collection', () => {
 
     // Same item worn 3 days — should appear once in the accessories list
     expect(accessories).toHaveLength(1);
-    expect(accessories[0]).toBe('Black accessories');
+    expect(accessories[0]).toBe('Wool scarf');
   });
 
   it('includes distinct accessories as separate entries', () => {
-    const scarf     = makeItem('acc-scarf',   { category: 'accessories', color: 'red' });
-    const sunglasses = makeItem('acc-sunglass', { category: 'accessories', color: 'black' });
+    const scarf      = makeItem('acc-scarf',    { category: 'accessories', name: 'Red scarf' });
+    const sunglasses = makeItem('acc-sunglass', { category: 'accessories', name: 'Sunglasses' });
 
     const { accessories } = generatePackingList([
       makeOutfit('2026-04-01', [scarf, sunglasses]),
     ]);
 
     expect(accessories).toHaveLength(2);
-    expect(accessories).toContain('Red accessories');
-    expect(accessories).toContain('Black accessories');
+    expect(accessories).toContain('Red scarf');
+    expect(accessories).toContain('Sunglasses');
   });
 
   it('returns accessories sorted alphabetically', () => {
-    const red   = makeItem('acc-red',   { category: 'accessories', color: 'red' });
-    const black = makeItem('acc-black', { category: 'accessories', color: 'black' });
-    const white = makeItem('acc-white', { category: 'accessories', color: 'white' });
+    const red   = makeItem('acc-red',   { category: 'accessories', name: 'Sunglasses' });
+    const black = makeItem('acc-black', { category: 'accessories', name: 'Belt' });
+    const white = makeItem('acc-white', { category: 'accessories', name: 'Hat' });
 
     const { accessories } = generatePackingList([makeOutfit('2026-04-01', [red, black, white])]);
 
@@ -206,8 +200,8 @@ describe('toiletries', () => {
 
 describe('full packing list', () => {
   it('correctly separates clothing, accessories, and toiletries in one call', () => {
-    const top = makeItem('top-1',  { category: 'tops',        color: 'white' });
-    const acc = makeItem('acc-1',  { category: 'accessories', color: 'black' });
+    const top = makeItem('top-1',  { category: 'tops' });
+    const acc = makeItem('acc-1',  { category: 'accessories', name: 'Black belt' });
 
     const outfits = [
       makeOutfit('2026-04-01', [top, acc]),
@@ -221,7 +215,7 @@ describe('full packing list', () => {
     expect(clothing[0]).toEqual({ itemId: 'top-1', count: 2 });
 
     // Accessories: acc deduped to one label
-    expect(accessories).toEqual(['Black accessories']);
+    expect(accessories).toEqual(['Black belt']);
 
     // Toiletries: base list present
     expect(toiletries).toContain('Toothbrush & toothpaste');

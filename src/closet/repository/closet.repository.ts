@@ -22,6 +22,7 @@ export class ClosetRepository implements IClosetRepository {
       .from(TABLE)
       .insert({
         user_id: userId,
+        name: data.name,
         category: data.category,
         color: data.color,
         material: data.material,
@@ -52,6 +53,7 @@ export class ClosetRepository implements IClosetRepository {
 
   async update(itemId: string, data: UpdateClosetItemInput): Promise<ClosetItem> {
     const patch: Record<string, unknown> = {};
+    if (data.name !== undefined) patch.name = data.name;
     if (data.category !== undefined) patch.category = data.category;
     if (data.color !== undefined) patch.color = data.color;
     if (data.material !== undefined) patch.material = data.material;
@@ -87,6 +89,7 @@ function toClosetItem(row: Record<string, unknown>): ClosetItem {
   return {
     id: row.id as string,
     userId: row.user_id as string,
+    name: (row.name as string) ?? '',
     category: row.category as ClosetItem['category'],
     color: row.color as string,
     material: row.material as string,

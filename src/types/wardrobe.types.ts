@@ -3,6 +3,7 @@ import type { ClothingCategory, WarmthLevel, FormalityLevel, ISODateTime } from 
 export interface ClosetItem {
   id: string;
   userId: string;
+  name: string;
   category: ClothingCategory;
   color: string;
   material: string;

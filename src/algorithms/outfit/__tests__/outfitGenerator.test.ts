@@ -15,6 +15,7 @@ function makeItem(
   return {
     id,
     userId: 'user-test',
+    name: 'Test item',
     category,
     color: 'black',       // neutral by default — won't interfere with color tests
     material: 'cotton',

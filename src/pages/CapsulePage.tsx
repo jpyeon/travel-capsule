@@ -154,7 +154,10 @@ function CapsuleItemsSection({ capsule }: { capsule: CapsuleWardrobe }) {
                   className="h-6 w-6 flex-shrink-0 rounded-full border border-gray-200"
                   style={{ backgroundColor: item.color }}
                 />
-                <span className="text-xs font-medium capitalize text-gray-700">{item.category}</span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-gray-700">{item.name}</p>
+                  <span className="text-xs capitalize text-gray-400">{item.category}</span>
+                </div>
               </div>
               <p className="text-xs text-gray-500 capitalize">{item.material}</p>
               {item.tags.length > 0 && (
@@ -268,7 +271,7 @@ function PackingListSection({
   function clothingLabel(entry: ClothingPackEntry): string {
     const item = itemById.get(entry.itemId);
     if (!item) return entry.itemId;
-    return `${capitalise(item.color)} ${item.category}`;
+    return item.name;
   }
 
   return (
@@ -336,7 +339,3 @@ function formatDate(iso: string): string {
   });
 }
 
-function capitalise(str: string): string {
-  if (!str) return str;
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-}

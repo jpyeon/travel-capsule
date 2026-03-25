@@ -20,6 +20,7 @@ function makeItem(
   return {
     userId:         'user-test',
     id,
+    name:           'Test item',
     category,
     color:          'black',
     material:       'cotton',

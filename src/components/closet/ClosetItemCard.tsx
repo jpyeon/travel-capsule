@@ -11,17 +11,22 @@ export function ClosetItemCard({ item, onEdit, onDelete }: ClosetItemCardProps) 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4">
 
-      {/* Top row: color swatch + category badge */}
+      {/* Top row: color swatch + name */}
       <div className="flex items-center gap-3">
         <div
           className="h-8 w-8 flex-shrink-0 rounded-full border border-gray-200"
           style={{ backgroundColor: item.color }}
           title={item.color}
         />
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-          {item.category}
-        </span>
-        <span className="text-xs text-gray-400">{item.material}</span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-gray-800">{item.name}</p>
+          <div className="flex items-center gap-1.5">
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+              {item.category}
+            </span>
+            <span className="text-xs text-gray-400">{item.material}</span>
+          </div>
+        </div>
       </div>
 
       {/* Warmth + formality dot scales */}

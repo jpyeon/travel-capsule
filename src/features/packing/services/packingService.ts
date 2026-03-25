@@ -143,21 +143,10 @@ function collectAccessories(outfits: DailyOutfit[]): string[] {
       if (seenIds.has(item.id)) continue;
 
       seenIds.add(item.id);
-
-      // Synthesise a readable label from available fields
-      const label = `${capitalise(item.color)} ${item.category}`;
-      labels.push(label);
+      labels.push(item.name);
     }
   }
 
   return labels.sort();
 }
 
-// ---------------------------------------------------------------------------
-// Utilities
-// ---------------------------------------------------------------------------
-
-function capitalise(str: string): string {
-  if (!str) return str;
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-}

@@ -32,6 +32,7 @@ const LEVELS: (WarmthLevel | FormalityLevel)[] = [1, 2, 3, 4, 5];
 // ---------------------------------------------------------------------------
 
 interface ClosetFormState {
+  name: string;
   category: ClothingCategory;
   color: string;
   material: string;
@@ -42,6 +43,7 @@ interface ClosetFormState {
 }
 
 const EMPTY_FORM: ClosetFormState = {
+  name: '',
   category: 'tops',
   color: '',
   material: '',
@@ -53,6 +55,7 @@ const EMPTY_FORM: ClosetFormState = {
 
 function itemToFormState(item: ClosetItem): ClosetFormState {
   return {
+    name: item.name,
     category: item.category,
     color: item.color,
     material: item.material,
@@ -161,6 +164,7 @@ const ClosetPage: NextPage = () => {
     try {
       if (editingItem) {
         const input: UpdateClosetItemInput = {
+          name:      form.name,
           category:  form.category,
           color:     form.color,
           material:  form.material,
@@ -172,6 +176,7 @@ const ClosetPage: NextPage = () => {
         await updateItem(editingItem.id, input);
       } else {
         const input: CreateClosetItemInput = {
+          name:      form.name,
           category:  form.category,
           color:     form.color,
           material:  form.material,
@@ -211,6 +216,17 @@ const ClosetPage: NextPage = () => {
         title={editingItem ? 'Edit item' : 'Add item'}
       >
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+
+          <Field label="Name">
+            <input
+              required
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              className={INPUT_CLS}
+              placeholder="e.g. Blue linen shirt"
+            />
+          </Field>
 
           <div className="flex gap-3">
             <Field label="Category" className="flex-1">
