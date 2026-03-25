@@ -21,15 +21,8 @@ import { Button } from '../components/shared/Button';
 // ---------------------------------------------------------------------------
 
 const CapsulePage: NextPage = () => {
-  const { userId, loading: authLoading } = useAuth();
-
   const router = useRouter();
-
-  if (!authLoading && !userId) {
-    void router.replace('/LoginPage');
-    return null;
-  }
-
+  const { userId, loading: authLoading } = useAuth();
   const queryTripId = typeof router.query.tripId === 'string' ? router.query.tripId : '';
 
   const { trips, loading: tripsLoading } = useTrip(userId ?? '');
@@ -48,6 +41,11 @@ const CapsulePage: NextPage = () => {
   }, [queryTripId, trips, selectedTripId]);
 
   const loading = tripsLoading || closetLoading;
+
+  if (!authLoading && !userId) {
+    void router.replace('/LoginPage');
+    return null;
+  }
 
   return (
     <main className="p-8 max-w-4xl mx-auto">

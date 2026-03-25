@@ -1,6 +1,7 @@
 import type { AppProps } from 'next/app';
 import '../styles/globals.css';
 import { AuthProvider } from '../contexts/AuthContext';
+import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { NavBar } from '../components/shared/NavBar';
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -8,7 +9,9 @@ export default function App({ Component, pageProps }: AppProps) {
     <AuthProvider>
       <div className="min-h-screen bg-gray-50">
         <NavBar />
-        <Component {...pageProps} />
+        <ErrorBoundary>
+          <Component {...pageProps} />
+        </ErrorBoundary>
       </div>
     </AuthProvider>
   );

@@ -4,6 +4,7 @@
 import { useState, type FormEvent } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useCloset } from '../hooks/useCloset';
 import type {
@@ -69,6 +70,13 @@ function parseTags(raw: string): string[] {
     .filter(Boolean);
 }
 
+/** Clamp a raw string to a valid 1–5 level, defaulting to 3 on bad input. */
+function clampLevel(raw: string): WarmthLevel {
+  const n = parseInt(raw);
+  if (isNaN(n)) return 3 as WarmthLevel;
+  return Math.max(1, Math.min(5, n)) as WarmthLevel;
+}
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -76,12 +84,6 @@ function parseTags(raw: string): string[] {
 const ClosetPage: NextPage = () => {
   const router = useRouter();
   const { userId, loading: authLoading } = useAuth();
-
-  if (!authLoading && !userId) {
-    void router.replace('/LoginPage');
-    return null;
-  }
-
   const { items, loading, error, addItem, updateItem, removeItem } = useCloset(userId ?? '');
 
   // Modal state
@@ -95,6 +97,11 @@ const ClosetPage: NextPage = () => {
   const [description, setDescription]   = useState('');
   const [suggesting, setSuggesting]     = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
+
+  if (!authLoading && !userId) {
+    void router.replace('/LoginPage');
+    return null;
+  }
 
   function openAdd() {
     setEditingItem(null);
@@ -124,9 +131,13 @@ const ClosetPage: NextPage = () => {
     setSuggesting(true);
     setSuggestError(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/gemini/suggest-tags', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
+        },
         body: JSON.stringify({ description }),
       });
       const data = await res.json() as { tags?: string[]; error?: string };
@@ -153,8 +164,8 @@ const ClosetPage: NextPage = () => {
           category:  form.category,
           color:     form.color,
           material:  form.material,
-          warmth:    parseInt(form.warmth) as WarmthLevel,
-          formality: parseInt(form.formality) as FormalityLevel,
+          warmth:    clampLevel(form.warmth),
+          formality: clampLevel(form.formality),
           imageUrl:  form.imageUrl || null,
           tags:      parseTags(form.tags),
         };
@@ -164,8 +175,8 @@ const ClosetPage: NextPage = () => {
           category:  form.category,
           color:     form.color,
           material:  form.material,
-          warmth:    parseInt(form.warmth) as WarmthLevel,
-          formality: parseInt(form.formality) as FormalityLevel,
+          warmth:    clampLevel(form.warmth),
+          formality: clampLevel(form.formality),
           imageUrl:  form.imageUrl || undefined,
           tags:      parseTags(form.tags),
         };

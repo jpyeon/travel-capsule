@@ -5,6 +5,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getAuthUser } from '../../../lib/apiAuth';
 
 export interface SuggestTagsResponse {
   tags: string[];
@@ -20,6 +21,11 @@ export default async function handler(
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const user = await getAuthUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const { description } = req.body as { description?: string };

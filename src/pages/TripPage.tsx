@@ -4,6 +4,7 @@
 import { useState, type FormEvent } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../hooks/useTrip';
 import type { Trip, CreateTripInput, UpdateTripInput } from '../features/trips/types/trip';
@@ -68,13 +69,6 @@ function tripToFormState(trip: Trip): TripFormState {
 const TripPage: NextPage = () => {
   const router = useRouter();
   const { userId, loading: authLoading } = useAuth();
-
-  // Redirect to login if not authenticated
-  if (!authLoading && !userId) {
-    void router.replace('/LoginPage');
-    return null;
-  }
-
   const { trips, loading, error, createTrip, updateTrip, deleteTrip } = useTrip(userId ?? '');
 
   // Modal state
@@ -88,6 +82,12 @@ const TripPage: NextPage = () => {
   const [description, setDescription] = useState('');
   const [parsing, setParsing]         = useState(false);
   const [parseError, setParseError]   = useState<string | null>(null);
+
+  // Redirect to login if not authenticated (after all hooks)
+  if (!authLoading && !userId) {
+    void router.replace('/LoginPage');
+    return null;
+  }
 
   function openCreate() {
     setEditingTrip(null);
@@ -117,9 +117,13 @@ const TripPage: NextPage = () => {
     setParsing(true);
     setParseError(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/gemini/parse-trip', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
+        },
         body: JSON.stringify({ description }),
       });
       const data = await res.json() as { activities?: TripActivity[]; vibe?: TripVibe; error?: string };
