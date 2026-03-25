@@ -82,10 +82,17 @@ const TripPage: NextPage = () => {
   const [submitting, setSubmitting]   = useState(false);
   const [formError, setFormError]     = useState<string | null>(null);
 
+  // AI description parsing
+  const [description, setDescription] = useState('');
+  const [parsing, setParsing]         = useState(false);
+  const [parseError, setParseError]   = useState<string | null>(null);
+
   function openCreate() {
     setEditingTrip(null);
     setForm(EMPTY_FORM);
     setFormError(null);
+    setDescription('');
+    setParseError(null);
     setModalOpen(true);
   }
 
@@ -93,12 +100,38 @@ const TripPage: NextPage = () => {
     setEditingTrip(trip);
     setForm(tripToFormState(trip));
     setFormError(null);
+    setDescription('');
+    setParseError(null);
     setModalOpen(true);
   }
 
   function closeModal() {
     setModalOpen(false);
     setEditingTrip(null);
+  }
+
+  async function handleParseDescription() {
+    if (!description.trim()) return;
+    setParsing(true);
+    setParseError(null);
+    try {
+      const res = await fetch('/api/gemini/parse-trip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description }),
+      });
+      const data = await res.json() as { activities?: TripActivity[]; vibe?: TripVibe; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to parse description');
+      setForm((p) => ({
+        ...p,
+        activities: data.activities ?? p.activities,
+        vibe: data.vibe ?? p.vibe,
+      }));
+    } catch (err) {
+      setParseError((err as Error).message);
+    } finally {
+      setParsing(false);
+    }
   }
 
   function toggleActivity(activity: TripActivity) {
@@ -259,6 +292,37 @@ const TripPage: NextPage = () => {
                 />
               </Field>
             </div>
+          )}
+
+          {/* AI description — only shown on create */}
+          {!editingTrip && (
+            <Field label="Describe your trip (optional)">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className={`${INPUT_CLS} flex-1`}
+                  placeholder="e.g. beach holiday with hiking and one fancy dinner"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleParseDescription(); } }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleParseDescription}
+                  loading={parsing}
+                  disabled={!description.trim() || parsing}
+                >
+                  Auto-fill
+                </Button>
+              </div>
+              {parseError && <p className="text-xs text-red-600 mt-1">{parseError}</p>}
+              {!parseError && (
+                <p className="text-xs text-gray-400 mt-1">
+                  AI will suggest activities and vibe based on your description.
+                </p>
+              )}
+            </Field>
           )}
 
           <Field label="Vibe">

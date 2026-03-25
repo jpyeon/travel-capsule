@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Trip } from '../../features/trips/types/trip';
 import { Button } from '../shared/Button';
 
@@ -52,7 +53,13 @@ export function TripCard({ trip, onEdit, onDelete }: TripCardProps) {
       )}
 
       {/* Actions */}
-      <div className="flex gap-2 pt-1">
+      <div className="flex flex-wrap gap-2 pt-1">
+        <Link
+          href={`/CapsulePage?tripId=${trip.id}`}
+          className="rounded px-4 py-2 text-sm font-medium bg-black text-white hover:bg-gray-800 transition-colors"
+        >
+          Plan wardrobe
+        </Link>
         <Button variant="secondary" onClick={() => onEdit(trip)}>Edit</Button>
         <Button variant="danger" onClick={() => onDelete(trip.id)}>Delete</Button>
       </div>

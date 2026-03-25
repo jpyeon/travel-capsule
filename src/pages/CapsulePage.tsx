@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import type { NextPage } from 'next';
+import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import { useTrip } from '../hooks/useTrip';
 import { useCloset } from '../hooks/useCloset';
@@ -28,18 +29,23 @@ const CapsulePage: NextPage = () => {
     });
   }, []);
 
+  const router = useRouter();
+  const queryTripId = typeof router.query.tripId === 'string' ? router.query.tripId : '';
+
   const { trips, loading: tripsLoading } = useTrip(userId ?? '');
   const { items: closetItems, loading: closetLoading } = useCloset(userId ?? '');
 
   const [selectedTripId, setSelectedTripId] = useState<string>('');
   const selectedTrip = trips.find((t) => t.id === selectedTripId) ?? null;
 
-  // Pre-select the first trip once trips load
+  // Prefer URL query param; fall back to first trip once loaded
   useEffect(() => {
-    if (!selectedTripId && trips.length > 0) {
+    if (queryTripId) {
+      setSelectedTripId(queryTripId);
+    } else if (!selectedTripId && trips.length > 0) {
       setSelectedTripId(trips[0].id);
     }
-  }, [trips, selectedTripId]);
+  }, [queryTripId, trips, selectedTripId]);
 
   const loading = tripsLoading || closetLoading;
 

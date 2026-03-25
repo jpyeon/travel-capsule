@@ -90,10 +90,17 @@ const ClosetPage: NextPage = () => {
   const [submitting, setSubmitting]   = useState(false);
   const [formError, setFormError]     = useState<string | null>(null);
 
+  // AI tag suggestion
+  const [description, setDescription]   = useState('');
+  const [suggesting, setSuggesting]     = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+
   function openAdd() {
     setEditingItem(null);
     setForm(EMPTY_FORM);
     setFormError(null);
+    setDescription('');
+    setSuggestError(null);
     setModalOpen(true);
   }
 
@@ -101,12 +108,37 @@ const ClosetPage: NextPage = () => {
     setEditingItem(item);
     setForm(itemToFormState(item));
     setFormError(null);
+    setDescription('');
+    setSuggestError(null);
     setModalOpen(true);
   }
 
   function closeModal() {
     setModalOpen(false);
     setEditingItem(null);
+  }
+
+  async function handleSuggestTags() {
+    if (!description.trim()) return;
+    setSuggesting(true);
+    setSuggestError(null);
+    try {
+      const res = await fetch('/api/gemini/suggest-tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description }),
+      });
+      const data = await res.json() as { tags?: string[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to suggest tags');
+      // Merge suggested tags with any the user already typed
+      const existing = parseTags(form.tags);
+      const merged = [...new Set([...existing, ...(data.tags ?? [])])];
+      setForm((p) => ({ ...p, tags: merged.join(', ') }));
+    } catch (err) {
+      setSuggestError((err as Error).message);
+    } finally {
+      setSuggesting(false);
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -235,6 +267,32 @@ const ClosetPage: NextPage = () => {
               </select>
             </Field>
           </div>
+
+          <Field label="Describe this item (optional)">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className={`${INPUT_CLS} flex-1`}
+                placeholder="e.g. waterproof hiking jacket with fleece lining"
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleSuggestTags(); } }}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleSuggestTags}
+                loading={suggesting}
+                disabled={!description.trim() || suggesting}
+              >
+                Suggest tags
+              </Button>
+            </div>
+            {suggestError && <p className="text-xs text-red-600 mt-1">{suggestError}</p>}
+            {!suggestError && (
+              <p className="text-xs text-gray-400 mt-1">AI will suggest tags based on your description.</p>
+            )}
+          </Field>
 
           <Field label="Tags (comma-separated)">
             <input
