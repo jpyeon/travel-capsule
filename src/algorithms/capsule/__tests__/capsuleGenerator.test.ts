@@ -40,7 +40,6 @@ function makeForecast(overrides: Partial<WeatherForecast> = {}): WeatherForecast
     temperatureHigh: 20,
     temperatureLow:  12,
     rainProbability: 10,
-    windSpeed:       15,
     ...overrides,
   };
 }
@@ -107,6 +106,7 @@ describe('generateCapsuleWardrobe', () => {
       buildColdWeatherCloset(),
       coldForecasts,
       ['sightseeing', 'dining'],
+      'relaxed',
     );
 
     const outerwearItems = items.filter((item) => item.category === 'outerwear');
@@ -123,6 +123,7 @@ describe('generateCapsuleWardrobe', () => {
       buildMildWeatherCloset(),
       mildForecasts,
       ['casual'],
+      'relaxed',
     );
 
     const countByCategory = (cat: ClothingCategory) =>
@@ -144,6 +145,7 @@ describe('generateCapsuleWardrobe', () => {
       buildMildWeatherCloset(),
       mildForecasts,
       ['casual', 'dining'],
+      'relaxed',
     );
 
     expect(items.length).toBeGreaterThanOrEqual(6);

@@ -57,6 +57,7 @@ export function useCapsuleWardrobe(
         closetItems,
         trip.weatherForecast,
         trip.activities,
+        trip.vibe,
       );
 
       // --- Step 2: Daily outfits ---

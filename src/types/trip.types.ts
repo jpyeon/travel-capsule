@@ -3,6 +3,7 @@ import type { ClosetItem } from './wardrobe.types';
 // WeatherForecast is defined in the features/trips module (source of truth) and
 // re-exported here so global-types consumers get the canonical shape.
 export type { WeatherForecast } from '../features/trips/types/trip';
+import type { WeatherForecast } from '../features/trips/types/trip';
 
 export type TripActivity =
   | 'beach'

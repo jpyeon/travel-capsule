@@ -11,8 +11,8 @@ export interface ClosetItem {
   category: ClothingCategory;
   color: string;
   material: string;
-  warmth: WarmthLevel;
-  formality: FormalityLevel;
+  warmthScore: WarmthLevel;
+  formalityScore: FormalityLevel;
   imageUrl: string | null;
   // Stored as text[] in Postgres; empty array when no tags are set.
   tags: string[];
