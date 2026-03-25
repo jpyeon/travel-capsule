@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../hooks/useTrip';
 import type { Trip, CreateTripInput, UpdateTripInput } from '../features/trips/types/trip';
 import type { TripActivity, TripVibe } from '../types';
+import { searchDestination, type GeocodingResult } from '../services/geocoding/geocodingService';
 import { TripCard } from '../components/trip/TripCard';
 import { Button } from '../components/shared/Button';
 import { Modal } from '../components/shared/Modal';
@@ -78,6 +79,13 @@ const TripPage: NextPage = () => {
   const [submitting, setSubmitting]   = useState(false);
   const [formError, setFormError]     = useState<string | null>(null);
 
+  // Geocoding state
+  const [resolvedLocation, setResolvedLocation]       = useState<GeocodingResult | null>(null);
+  const [geocodingCandidates, setGeocodingCandidates] = useState<GeocodingResult[]>([]);
+  const [geocoding, setGeocoding]                     = useState(false);
+  const [geocodingError, setGeocodingError]           = useState<string | null>(null);
+  const [showManualCoords, setShowManualCoords]       = useState(false);
+
   // AI description parsing
   const [description, setDescription] = useState('');
   const [parsing, setParsing]         = useState(false);
@@ -89,12 +97,20 @@ const TripPage: NextPage = () => {
     return null;
   }
 
+  function resetGeocoding() {
+    setResolvedLocation(null);
+    setGeocodingCandidates([]);
+    setGeocodingError(null);
+    setShowManualCoords(false);
+  }
+
   function openCreate() {
     setEditingTrip(null);
     setForm(EMPTY_FORM);
     setFormError(null);
     setDescription('');
     setParseError(null);
+    resetGeocoding();
     setModalOpen(true);
   }
 
@@ -104,6 +120,7 @@ const TripPage: NextPage = () => {
     setFormError(null);
     setDescription('');
     setParseError(null);
+    resetGeocoding();
     setModalOpen(true);
   }
 
@@ -140,6 +157,45 @@ const TripPage: NextPage = () => {
     }
   }
 
+  function selectLocation(result: GeocodingResult) {
+    setResolvedLocation(result);
+    setGeocodingCandidates([]);
+    setGeocodingError(null);
+    setForm((p) => ({
+      ...p,
+      latitude:  String(result.latitude),
+      longitude: String(result.longitude),
+    }));
+  }
+
+  async function handleDestinationBlur() {
+    if (editingTrip) return; // lat/lng not needed on edit
+    const query = form.destination.trim();
+    if (!query) return;
+    if (resolvedLocation) return; // already resolved — use Re-search to re-trigger
+
+    setGeocoding(true);
+    setGeocodingError(null);
+    setGeocodingCandidates([]);
+
+    try {
+      const results = await searchDestination(query);
+      if (results.length === 0) {
+        setGeocodingError('Location not found.');
+        setShowManualCoords(true);
+      } else if (results.length === 1) {
+        selectLocation(results[0]);
+      } else {
+        setGeocodingCandidates(results);
+      }
+    } catch {
+      setGeocodingError('Could not search location.');
+      setShowManualCoords(true);
+    } finally {
+      setGeocoding(false);
+    }
+  }
+
   function toggleActivity(activity: TripActivity) {
     setForm((prev) => ({
       ...prev,
@@ -165,14 +221,19 @@ const TripPage: NextPage = () => {
         };
         await updateTrip(editingTrip.id, input);
       } else {
+        const lat = parseFloat(form.latitude);
+        const lng = parseFloat(form.longitude);
+        if (isNaN(lat) || isNaN(lng)) {
+          throw new Error('Location not resolved — tab off the destination field to search, or enter coordinates manually.');
+        }
         const input: CreateTripInput = {
           destination: form.destination,
           startDate:   form.startDate,
           endDate:     form.endDate,
           activities:  form.activities,
           vibe:        form.vibe,
-          latitude:    parseFloat(form.latitude),
-          longitude:   parseFloat(form.longitude),
+          latitude:    lat,
+          longitude:   lng,
         };
         await createTrip(input);
       }
@@ -245,10 +306,65 @@ const TripPage: NextPage = () => {
               required
               type="text"
               value={form.destination}
-              onChange={(e) => setForm((p) => ({ ...p, destination: e.target.value }))}
+              onChange={(e) => {
+                setForm((p) => ({ ...p, destination: e.target.value }));
+                // Clear resolved location when user edits destination
+                if (resolvedLocation) {
+                  resetGeocoding();
+                  setForm((p) => ({ ...p, destination: e.target.value, latitude: '', longitude: '' }));
+                }
+              }}
+              onBlur={handleDestinationBlur}
               className={INPUT_CLS}
               placeholder="e.g. Tokyo, Japan"
             />
+
+            {/* Geocoding feedback — only on create */}
+            {!editingTrip && (
+              <div className="mt-1">
+                {geocoding && (
+                  <p className="text-xs text-gray-400">Searching location...</p>
+                )}
+
+                {/* Confirmed single result */}
+                {resolvedLocation && !geocoding && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-600">
+                      📍 {resolvedLocation.name}{resolvedLocation.region ? `, ${resolvedLocation.region}` : ''}, {resolvedLocation.country}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { resetGeocoding(); setForm((p) => ({ ...p, latitude: '', longitude: '' })); }}
+                      className="text-xs text-gray-400 hover:text-gray-600"
+                    >
+                      Re-search
+                    </button>
+                  </div>
+                )}
+
+                {/* Multiple candidates — let user pick */}
+                {geocodingCandidates.length > 1 && !geocoding && (
+                  <div className="mt-1 flex flex-col gap-1">
+                    <p className="text-xs text-gray-500">Multiple matches — pick one:</p>
+                    {geocodingCandidates.map((c, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => selectLocation(c)}
+                        className="text-left text-xs rounded border border-gray-200 px-2 py-1.5 hover:bg-gray-50"
+                      >
+                        {c.name}{c.region ? `, ${c.region}` : ''}, {c.country}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Geocoding error + manual fallback */}
+                {geocodingError && !geocoding && (
+                  <p className="text-xs text-red-500">{geocodingError}</p>
+                )}
+              </div>
+            )}
           </Field>
 
           <div className="flex gap-3">
@@ -272,8 +388,8 @@ const TripPage: NextPage = () => {
             </Field>
           </div>
 
-          {/* Lat/lng — only needed for weather fetch on create */}
-          {!editingTrip && (
+          {/* Manual coords — only shown as fallback when geocoding fails */}
+          {!editingTrip && showManualCoords && (
             <div className="flex gap-3">
               <Field label="Latitude" className="flex-1">
                 <input
