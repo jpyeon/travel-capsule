@@ -4,6 +4,7 @@
 // components never import service or repository classes directly.
 
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { ClosetRepository } from '../closet/repository/closet.repository';
 import { ClosetService } from '../closet/service/closet.service';
@@ -74,11 +75,12 @@ export function useCloset(userId: string): UseClosetReturn {
     setError(null);
     try {
       const created = await service.createClosetItem(userId, input);
-      // Optimistic prepend — no need to re-fetch the full list
       setItems((prev) => [created, ...prev]);
+      toast.success('Item added');
     } catch (err) {
       setError((err as Error).message);
-      throw err; // re-throw so the calling component can react (e.g. show a form error)
+      toast.error((err as Error).message);
+      throw err;
     }
   }, [service, userId]);
 
@@ -90,8 +92,10 @@ export function useCloset(userId: string): UseClosetReturn {
     try {
       const updated = await service.updateClosetItem(itemId, input);
       setItems((prev) => prev.map((item) => (item.id === itemId ? updated : item)));
+      toast.success('Item updated');
     } catch (err) {
       setError((err as Error).message);
+      toast.error((err as Error).message);
       throw err;
     }
   }, [service]);
@@ -101,8 +105,10 @@ export function useCloset(userId: string): UseClosetReturn {
     try {
       await service.deleteClosetItem(itemId);
       setItems((prev) => prev.filter((item) => item.id !== itemId));
+      toast.success('Item removed');
     } catch (err) {
       setError((err as Error).message);
+      toast.error((err as Error).message);
       throw err;
     }
   }, [service]);

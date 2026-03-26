@@ -48,7 +48,7 @@ const CapsulePage: NextPage = () => {
   }
 
   return (
-    <main className="p-8 max-w-4xl mx-auto">
+    <main className="p-4 sm:p-8 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Capsule Wardrobe</h1>
 
       {/* Trip selector */}
@@ -74,7 +74,7 @@ const CapsulePage: NextPage = () => {
       </div>
 
       {/* Capsule generator — only mounts when a trip is selected */}
-      {!loading && selectedTrip && (
+      {!loading && selectedTrip && userId && (
         <CapsuleSection
           trip={selectedTrip}
           // The closet module uses `warmth`/`formality` field names while the
@@ -82,6 +82,7 @@ const CapsulePage: NextPage = () => {
           // `warmthScore`/`formalityScore`. This pre-existing mismatch should
           // be resolved by unifying the two ClosetItem types.
           closetItems={closetItems as unknown as CanonicalClosetItem[]}
+          userId={userId}
         />
       )}
     </main>
@@ -97,24 +98,44 @@ export default CapsulePage;
 function CapsuleSection({
   trip,
   closetItems,
+  userId,
 }: {
   trip: Trip;
   closetItems: CanonicalClosetItem[];
+  userId: string;
 }) {
-  const { capsule, outfits, packingList, generating, error, generate, reset } =
-    useCapsuleWardrobe(trip, closetItems);
+  const { capsule, outfits, packingList, packedItems, loading, generating, error, savedAt, generate, togglePacked, reset } =
+    useCapsuleWardrobe(trip, closetItems, userId);
+
+  if (loading) {
+    return <div className="h-8 w-48 animate-pulse rounded bg-gray-100" />;
+  }
 
   return (
     <div className="flex flex-col gap-10">
       {/* Generate / Reset controls */}
-      <div className="flex items-center gap-3">
-        <Button onClick={generate} loading={generating} disabled={generating}>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button
+          onClick={() => {
+            if (capsule && packedItems.size > 0) {
+              if (!confirm('Regenerating will reset your packing progress. Continue?')) return;
+            }
+            generate();
+          }}
+          loading={generating}
+          disabled={generating}
+        >
           {capsule ? 'Regenerate' : 'Generate capsule'}
         </Button>
         {capsule && (
           <Button variant="secondary" onClick={reset}>
             Reset
           </Button>
+        )}
+        {savedAt && (
+          <span className="text-xs text-gray-400">
+            Last generated {formatDate(savedAt.split('T')[0])}
+          </span>
         )}
       </div>
 
@@ -124,7 +145,14 @@ function CapsuleSection({
         <>
           <CapsuleItemsSection capsule={capsule} />
           <DailyOutfitsSection outfits={outfits} capsule={capsule} />
-          {packingList && <PackingListSection packingList={packingList} capsule={capsule} />}
+          {packingList && (
+            <PackingListSection
+              packingList={packingList}
+              capsule={capsule}
+              packedItems={packedItems}
+              onToggle={togglePacked}
+            />
+          )}
         </>
       )}
     </div>
@@ -262,11 +290,21 @@ function DailyOutfitsSection({
 function PackingListSection({
   packingList,
   capsule,
+  packedItems,
+  onToggle,
 }: {
   packingList: PackingList;
   capsule: CapsuleWardrobe;
+  packedItems: Set<string>;
+  onToggle: (key: string) => void;
 }) {
   const itemById = new Map(capsule.items.map((i) => [i.id, i]));
+
+  const packedCount = packedItems.size;
+  const totalCount =
+    packingList.clothing.length +
+    packingList.accessories.length +
+    packingList.toiletries.length;
 
   function clothingLabel(entry: ClothingPackEntry): string {
     const item = itemById.get(entry.itemId);
@@ -276,12 +314,20 @@ function PackingListSection({
 
   return (
     <section>
-      <h2 className="mb-4 text-lg font-semibold">Packing list</h2>
+      <div className="mb-4 flex items-baseline gap-3">
+        <h2 className="text-lg font-semibold">Packing list</h2>
+        <span className="text-sm text-gray-400">{packedCount} / {totalCount} packed</span>
+      </div>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
 
         <PackingSection title="Clothing">
           {packingList.clothing.map((entry) => (
-            <PackingRow key={entry.itemId}>
+            <PackingRow
+              key={entry.itemId}
+              itemKey={entry.itemId}
+              packed={packedItems.has(entry.itemId)}
+              onToggle={onToggle}
+            >
               {clothingLabel(entry)}
               {entry.count > 1 && (
                 <span className="ml-1 text-gray-400">×{entry.count}</span>
@@ -293,14 +339,28 @@ function PackingListSection({
         {packingList.accessories.length > 0 && (
           <PackingSection title="Accessories">
             {packingList.accessories.map((label) => (
-              <PackingRow key={label}>{label}</PackingRow>
+              <PackingRow
+                key={label}
+                itemKey={label}
+                packed={packedItems.has(label)}
+                onToggle={onToggle}
+              >
+                {label}
+              </PackingRow>
             ))}
           </PackingSection>
         )}
 
         <PackingSection title="Toiletries">
           {packingList.toiletries.map((item) => (
-            <PackingRow key={item}>{item}</PackingRow>
+            <PackingRow
+              key={item}
+              itemKey={item}
+              packed={packedItems.has(item)}
+              onToggle={onToggle}
+            >
+              {item}
+            </PackingRow>
           ))}
         </PackingSection>
 
@@ -318,11 +378,33 @@ function PackingSection({ title, children }: { title: string; children: React.Re
   );
 }
 
-function PackingRow({ children }: { children: React.ReactNode }) {
+function PackingRow({
+  children,
+  itemKey,
+  packed,
+  onToggle,
+}: {
+  children: React.ReactNode;
+  itemKey: string;
+  packed: boolean;
+  onToggle: (key: string) => void;
+}) {
   return (
-    <li className="flex items-baseline gap-2 text-sm text-gray-700">
-      <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gray-400" />
-      {children}
+    <li className="flex items-center gap-2 text-sm">
+      <button
+        type="button"
+        onClick={() => onToggle(itemKey)}
+        aria-label={packed ? 'Mark as unpacked' : 'Mark as packed'}
+        className={[
+          'h-4 w-4 flex-shrink-0 rounded-full border-2 transition-colors',
+          packed
+            ? 'border-black bg-black'
+            : 'border-gray-300 bg-white hover:border-gray-500',
+        ].join(' ')}
+      />
+      <span className={packed ? 'text-gray-400 line-through' : 'text-gray-700'}>
+        {children}
+      </span>
     </li>
   );
 }

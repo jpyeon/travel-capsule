@@ -250,7 +250,7 @@ const TripPage: NextPage = () => {
   // ---------------------------------------------------------------------------
 
   return (
-    <main className="p-8">
+    <main className="p-4 sm:p-8">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">My Trips</h1>

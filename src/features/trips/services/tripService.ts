@@ -18,8 +18,6 @@ export class TripService implements ITripService {
   async createTrip(userId: string, data: CreateTripInput): Promise<Trip> {
     validateCreateInput(data);
 
-    // TODO: check for date conflicts with existing trips for this user
-
     // --- Fetch weather forecast ---
     // Called here so the forecast is stored with the trip from the moment it is
     // created, giving downstream features (capsule generator, outfit engine) access

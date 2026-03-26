@@ -1,10 +1,11 @@
 // Route-level component for the digital wardrobe view.
 // Delegates data fetching and state to useCloset hook; no business logic here.
 
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, type FormEvent, type ChangeEvent } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
+import { uploadClosetImage } from '../lib/uploadImage';
 import { useAuth } from '../contexts/AuthContext';
 import { useCloset } from '../hooks/useCloset';
 import type {
@@ -96,6 +97,11 @@ const ClosetPage: NextPage = () => {
   const [submitting, setSubmitting]   = useState(false);
   const [formError, setFormError]     = useState<string | null>(null);
 
+  // Image upload
+  const fileInputRef                    = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading]       = useState(false);
+  const [uploadError, setUploadError]   = useState<string | null>(null);
+
   // AI tag suggestion
   const [description, setDescription]   = useState('');
   const [suggesting, setSuggesting]     = useState(false);
@@ -110,6 +116,7 @@ const ClosetPage: NextPage = () => {
     setEditingItem(null);
     setForm(EMPTY_FORM);
     setFormError(null);
+    setUploadError(null);
     setDescription('');
     setSuggestError(null);
     setModalOpen(true);
@@ -119,9 +126,25 @@ const ClosetPage: NextPage = () => {
     setEditingItem(item);
     setForm(itemToFormState(item));
     setFormError(null);
+    setUploadError(null);
     setDescription('');
     setSuggestError(null);
     setModalOpen(true);
+  }
+
+  async function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const url = await uploadClosetImage(supabase, userId, file);
+      setForm((p) => ({ ...p, imageUrl: url }));
+    } catch (err) {
+      setUploadError((err as Error).message);
+    } finally {
+      setUploading(false);
+    }
   }
 
   function closeModal() {
@@ -200,7 +223,7 @@ const ClosetPage: NextPage = () => {
   // ---------------------------------------------------------------------------
 
   return (
-    <main className="p-8">
+    <main className="p-4 sm:p-8">
       <ClosetGrid
         items={items}
         loading={loading}
@@ -332,14 +355,42 @@ const ClosetPage: NextPage = () => {
             />
           </Field>
 
-          <Field label="Image URL (optional)">
-            <input
-              type="url"
-              value={form.imageUrl}
-              onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
-              className={INPUT_CLS}
-              placeholder="https://..."
-            />
+          <Field label="Photo (optional)">
+            {form.imageUrl && (
+              <img
+                src={form.imageUrl}
+                alt="Item preview"
+                className="mb-2 h-32 w-32 rounded-lg object-cover border border-gray-200"
+              />
+            )}
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+                loading={uploading}
+                disabled={uploading}
+              >
+                {form.imageUrl ? 'Replace photo' : 'Upload photo'}
+              </Button>
+              {form.imageUrl && !uploading && (
+                <button
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, imageUrl: '' }))}
+                  className="text-xs text-gray-400 hover:text-red-500"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {uploadError && <p className="text-xs text-red-600 mt-1">{uploadError}</p>}
           </Field>
 
           {formError && <p className="text-sm text-red-600">{formError}</p>}

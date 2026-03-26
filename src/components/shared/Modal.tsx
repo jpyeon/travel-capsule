@@ -36,7 +36,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     >
       {/* Panel — stop click propagation so clicking inside doesn't close */}
       <div
-        className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+        className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
