@@ -1,4 +1,4 @@
-import type { ISODate, ISODateTime } from './shared.types';
+import type { ISODate } from './shared.types';
 import type { ClosetItem } from './wardrobe.types';
 // WeatherForecast is defined in the features/trips module (source of truth) and
 // re-exported here so global-types consumers get the canonical shape.
@@ -59,8 +59,3 @@ export interface TripDay {
   notes?: string;
 }
 
-export interface CapsuleWardrobe {
-  tripId: string;
-  items: ClosetItem[];
-  generatedAt: ISODateTime;
-}

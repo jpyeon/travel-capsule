@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateCapsuleWardrobe } from '../capsuleGenerator';
 import type { ClosetItem, ClothingCategory } from '../../../types';
-import type { WeatherForecast } from '../../../services/weather/weatherService';
+import type { WeatherForecast } from '../../../features/trips/types/trip';
 
 // ---------------------------------------------------------------------------
 // Fixtures

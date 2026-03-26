@@ -17,13 +17,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
-import { generateCapsuleWardrobe } from '../algorithms/capsule/capsuleGenerator';
+import { generateCapsuleWardrobe, CapsuleRepository } from '../features/capsule';
 import { generateDailyOutfits } from '../algorithms/outfit/outfitGenerator';
-import { generatePackingList } from '../features/packing/services/packingService';
-import { CapsuleRepository } from '../features/capsule/repository/capsuleRepository';
+import { generatePackingList } from '../features/packing';
 import { dateRange } from '../utils/date.utils';
-import type { CapsuleWardrobe } from '../algorithms/capsule/capsuleGenerator';
-import type { PackingList } from '../features/packing/services/packingService';
+import { assessWeather } from '../utils/weatherUtils';
+import type { CapsuleWardrobe } from '../features/capsule';
+import type { PackingList } from '../features/packing';
 import type { Trip, WeatherForecast } from '../features/trips/types/trip';
 import type { ClosetItem, DailyOutfit, TripDay } from '../types';
 
@@ -122,12 +122,7 @@ export function useCapsuleWardrobe(
       const generatedOutfits = generateDailyOutfits(generatedCapsule.items, tripDays);
 
       const numTripDays = dateRange(trip.startDate, trip.endDate).length;
-      const avgTemp = trip.weatherForecast.length > 0
-        ? trip.weatherForecast.reduce((s, f) => s + f.temperatureHigh, 0) / trip.weatherForecast.length
-        : 20;
-      const rainRisk = trip.weatherForecast.length > 0
-        ? trip.weatherForecast.reduce((s, f) => s + f.rainProbability, 0) / trip.weatherForecast.length
-        : 0;
+      const { avgTemp, rainRisk } = assessWeather(trip.weatherForecast);
       const generatedPackingList = generatePackingList(generatedOutfits, {
         tripDays: numTripDays,
         avgTemp,

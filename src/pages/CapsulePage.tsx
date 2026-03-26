@@ -10,8 +10,8 @@ import { useCloset } from '../hooks/useCloset';
 import { useCapsuleWardrobe } from '../hooks/useCapsuleWardrobe';
 import type { Trip } from '../features/trips/types/trip';
 import type { ClosetItem, DailyOutfit } from '../types';
-import type { PackingList, ClothingPackEntry } from '../features/packing/services/packingService';
-import type { CapsuleWardrobe } from '../algorithms/capsule/capsuleGenerator';
+import type { PackingList, ClothingPackEntry } from '../features/packing';
+import type { CapsuleWardrobe } from '../features/capsule';
 import { Button } from '../components/shared/Button';
 
 // ---------------------------------------------------------------------------
@@ -109,18 +109,26 @@ function CapsuleSection({
     <div className="flex flex-col gap-10">
       {/* Generate / Reset controls */}
       <div className="flex items-center gap-3 flex-wrap">
-        <Button
-          onClick={() => {
-            if (capsule && packedItems.size > 0) {
-              if (!confirm('Regenerating will reset your packing progress. Continue?')) return;
-            }
-            generate();
-          }}
-          loading={generating}
-          disabled={generating}
-        >
-          {capsule ? 'Regenerate' : 'Generate capsule'}
-        </Button>
+        {closetItems.length < 6 ? (
+          <p className="text-sm text-gray-500">
+            Add at least 6 items to your{' '}
+            <a href="/ClosetPage" className="underline hover:text-gray-800">closet</a>
+            {' '}before generating a capsule.
+          </p>
+        ) : (
+          <Button
+            onClick={() => {
+              if (capsule && packedItems.size > 0) {
+                if (!confirm('Regenerating will reset your packing progress. Continue?')) return;
+              }
+              generate();
+            }}
+            loading={generating}
+            disabled={generating}
+          >
+            {capsule ? 'Regenerate' : 'Generate capsule'}
+          </Button>
+        )}
         {capsule && (
           <Button variant="secondary" onClick={reset}>
             Reset
@@ -261,7 +269,7 @@ function DailyOutfitsSection({
                               className="h-3 w-3 rounded-full border border-gray-200"
                               style={{ backgroundColor: full?.color ?? item.color }}
                             />
-                            <span className="capitalize text-gray-600">{item.category}</span>
+                            <span className="text-gray-600">{full?.name ?? item.category}</span>
                           </div>
                         );
                       })
@@ -315,9 +323,16 @@ function PackingListSection({
 
   return (
     <section>
-      <div className="mb-4 flex items-baseline gap-3">
+      <div className="mb-4 flex items-baseline gap-3 flex-wrap">
         <h2 className="text-lg font-semibold">Packing list</h2>
         <span className="text-sm text-gray-400">{packedCount} / {totalCount} packed</span>
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="ml-auto text-xs text-gray-400 hover:text-gray-700 print:hidden"
+        >
+          Print / Save as PDF
+        </button>
       </div>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
 

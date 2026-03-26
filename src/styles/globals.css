@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media print {
+  /* Hide everything except the packing list section when printing */
+  nav,
+  h1,
+  [data-print-hide],
+  .print\:hidden {
+    display: none !important;
+  }
+}

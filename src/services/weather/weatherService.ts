@@ -3,9 +3,6 @@
 
 import type { WeatherForecast } from '../../features/trips/types/trip';
 
-// Re-export so existing imports from this file (e.g. capsule algorithm) continue to resolve.
-export type { WeatherForecast };
-
 // ---------------------------------------------------------------------------
 // Open-Meteo API contract
 // ---------------------------------------------------------------------------

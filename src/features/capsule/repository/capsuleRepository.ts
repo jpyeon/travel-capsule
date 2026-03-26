@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { CapsuleWardrobe } from '../../../algorithms/capsule/capsuleGenerator';
 import type { DailyOutfit } from '../../../types';
-import type { PackingList } from '../../packing/services/packingService';
+import type { PackingList } from '../../packing';
 
 const TABLE = 'capsule_wardrobes';
 

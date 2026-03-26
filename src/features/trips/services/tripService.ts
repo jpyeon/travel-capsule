@@ -95,15 +95,32 @@ export class TripService implements ITripService {
     if (Object.keys(data).length === 0) throw new Error('No fields provided to update');
     validateUpdateInput(data);
 
-    // TODO: re-validate date range against weather forecasts if dates change
-    // TODO: re-validate activities against capsule wardrobe if already generated
-
     const patch: Record<string, unknown> = {};
     if (data.destination !== undefined) patch.destination = data.destination;
     if (data.startDate !== undefined) patch.start_date = data.startDate;
     if (data.endDate !== undefined) patch.end_date = data.endDate;
     if (data.activities !== undefined) patch.activities = data.activities;
     if (data.vibe !== undefined) patch.vibe = data.vibe;
+
+    // Re-fetch weather when dates change — the stored forecast is keyed to a
+    // specific date window, so a date edit makes it stale.
+    if (data.startDate !== undefined || data.endDate !== undefined) {
+      const { data: coords } = await this.supabase
+        .from(TABLE)
+        .select('latitude, longitude')
+        .eq('id', tripId)
+        .single();
+      if (coords) {
+        try {
+          patch.weather_forecast = await getWeatherForecast(
+            coords.latitude as number,
+            coords.longitude as number,
+          );
+        } catch {
+          // best-effort — update proceeds without refreshing forecast
+        }
+      }
+    }
 
     const { data: row, error } = await this.supabase
       .from(TABLE)
@@ -120,7 +137,7 @@ export class TripService implements ITripService {
   async deleteTrip(tripId: string): Promise<void> {
     if (!tripId) throw new Error('tripId is required');
 
-    // TODO: cascade-delete associated capsule wardrobes and packing lists
+    // capsule_wardrobes rows are removed automatically via ON DELETE CASCADE on the FK.
 
     const { error } = await this.supabase
       .from(TABLE)

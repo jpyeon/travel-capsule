@@ -9,5 +9,4 @@ export type {
   Trip,
   DailyOutfit,
   TripDay,
-  CapsuleWardrobe,
 } from './trip.types';

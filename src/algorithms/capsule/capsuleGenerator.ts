@@ -15,7 +15,8 @@
  */
 
 import type { ClosetItem, ClothingCategory, TripActivity, TripVibe, FormalityLevel } from '../../types';
-import type { WeatherForecast } from '../../services/weather/weatherService';
+import type { WeatherForecast } from '../../features/trips/types/trip';
+import { assessWeather, COLD_THRESHOLD_C, HOT_THRESHOLD_C, RAIN_RISK_THRESHOLD } from '../../utils/weatherUtils';
 
 // ---------------------------------------------------------------------------
 // Output types
@@ -55,18 +56,6 @@ export interface CapsuleWardrobe {
 
 const CAPSULE_MIN = 6;
 const CAPSULE_MAX = 10;
-
-/**
- * Temperature thresholds in °C (converted from the spec's 50 °F / 70 °F).
- *
- * < COLD_THRESHOLD_C  →  cold trip  (prefer insulating items)
- * > HOT_THRESHOLD_C   →  hot trip   (avoid heavy items)
- */
-const COLD_THRESHOLD_C = 10; // ≈ 50 °F
-const HOT_THRESHOLD_C  = 21; // ≈ 70 °F
-
-/** Rain-risk % above which waterproof preference kicks in. */
-const RAIN_RISK_THRESHOLD = 40;
 
 const ACTIVITY_PREFERENCES: Record<TripActivity, { formality: 'low' | 'mid' | 'high'; categories: ClothingCategory[] }> = {
   beach:       { formality: 'low',  categories: ['activewear', 'dresses'] },
@@ -156,34 +145,8 @@ export function generateCapsuleWardrobe(
 }
 
 // ---------------------------------------------------------------------------
-// Step 1 — Assess weather
+// Step 1 — Assess weather  (see utils/weatherUtils.ts)
 // ---------------------------------------------------------------------------
-
-interface WeatherConditions {
-  /** Mean of all daily temperature-high values across the forecast window (°C). */
-  avgTemp: number;
-  /** Mean of all daily rain-probability values (0–100). */
-  rainRisk: number;
-}
-
-/**
- * Derive two scalar conditions from the forecast.
- *
- * Using temperature *highs* for avgTemp is intentional: the high is what the
- * user experiences for most of the day.  Falls back to mild/dry defaults when
- * no forecast data is present so the rest of the pipeline can still run.
- */
-function assessWeather(forecasts: WeatherForecast[]): WeatherConditions {
-  if (forecasts.length === 0) {
-    // No forecast available — assume comfortable, dry conditions
-    return { avgTemp: 20, rainRisk: 0 };
-  }
-
-  return {
-    avgTemp:  mean(forecasts.map((f) => f.temperatureHigh)),
-    rainRisk: mean(forecasts.map((f) => f.rainProbability)),
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Step 2 — Filter by weather suitability
@@ -373,7 +336,3 @@ function sortByScore(items: ClosetItem[], scoreById: Map<string, ItemScore>): Cl
   );
 }
 
-function mean(values: number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((sum, v) => sum + v, 0) / values.length;
-}
