@@ -28,3 +28,22 @@ export function formatISODate(date: ISODate): string {
     timeZone: 'UTC',
   });
 }
+
+/** Short format: "5 Mar 2026" — for cards and lists. */
+export function formatDateShort(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+/** Long format: "Thu, 5 Mar 2026" — for detail headings. */
+export function formatDateLong(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}

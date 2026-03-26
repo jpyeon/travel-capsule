@@ -18,7 +18,7 @@ const LoginPage: NextPage = () => {
 
   // Redirect if already signed in
   if (!authLoading && userId) {
-    void router.replace('/TripPage');
+    void router.replace('/DashboardPage');
     return null;
   }
 

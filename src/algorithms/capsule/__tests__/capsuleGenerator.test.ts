@@ -153,4 +153,120 @@ describe('generateCapsuleWardrobe', () => {
     expect(items.length).toBeLessThanOrEqual(10);
   });
 
+  // -------------------------------------------------------------------------
+  // Edge cases: boundary temperatures
+  // -------------------------------------------------------------------------
+
+  it('handles exactly 0°C forecast', () => {
+    const freezingForecasts = [
+      makeForecast({ date: '2026-01-10', temperatureHigh: 0, temperatureLow: -3 }),
+      makeForecast({ date: '2026-01-11', temperatureHigh: 0, temperatureLow: -2 }),
+    ];
+
+    const { items } = generateCapsuleWardrobe(
+      buildColdWeatherCloset(),
+      freezingForecasts,
+      ['sightseeing'],
+      'relaxed',
+    );
+
+    expect(items.length).toBeGreaterThanOrEqual(6);
+    const hasOuterwear = items.some((i) => i.category === 'outerwear');
+    expect(hasOuterwear).toBe(true);
+  });
+
+  it('handles extreme cold forecast (-40°C)', () => {
+    const extremeColdForecasts = [
+      makeForecast({ date: '2026-01-10', temperatureHigh: -35, temperatureLow: -40 }),
+    ];
+
+    // May throw if closet doesn't have enough warm items — that's valid behavior.
+    // The test just ensures no unhandled crash.
+    expect(() =>
+      generateCapsuleWardrobe(
+        buildColdWeatherCloset(),
+        extremeColdForecasts,
+        ['casual'],
+        'relaxed',
+      ),
+    ).not.toThrow();
+  });
+
+  it('handles extreme heat forecast (45°C)', () => {
+    const hotCloset = [
+      makeItem('top-hot-1', 'tops',      { warmthScore: 1 }),
+      makeItem('top-hot-2', 'tops',      { warmthScore: 1 }),
+      makeItem('top-hot-3', 'tops',      { warmthScore: 1 }),
+      makeItem('btm-hot-1', 'bottoms',   { warmthScore: 1 }),
+      makeItem('btm-hot-2', 'bottoms',   { warmthScore: 1 }),
+      makeItem('out-hot-1', 'outerwear', { warmthScore: 1 }),
+      makeItem('sho-hot-1', 'footwear',  { warmthScore: 1 }),
+    ];
+    const hotForecasts = [
+      makeForecast({ date: '2026-07-10', temperatureHigh: 45, temperatureLow: 32 }),
+    ];
+
+    const { items } = generateCapsuleWardrobe(
+      hotCloset,
+      hotForecasts,
+      ['beach'],
+      'relaxed',
+    );
+
+    expect(items.length).toBeGreaterThanOrEqual(6);
+  });
+
+  // -------------------------------------------------------------------------
+  // Edge cases: empty / minimal inputs
+  // -------------------------------------------------------------------------
+
+  it('throws when closet has fewer than 6 items', () => {
+    const tinyCloset = [
+      makeItem('top-1', 'tops'),
+      makeItem('btm-1', 'bottoms'),
+    ];
+
+    expect(() =>
+      generateCapsuleWardrobe(tinyCloset, [makeForecast()], ['casual'], 'relaxed'),
+    ).toThrow(/Cannot build a capsule wardrobe/);
+  });
+
+  it('handles empty forecast array (defaults to sensible weather)', () => {
+    const { items } = generateCapsuleWardrobe(
+      buildMildWeatherCloset(),
+      [],
+      ['casual'],
+      'relaxed',
+    );
+
+    expect(items.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('handles empty activities array', () => {
+    const { items } = generateCapsuleWardrobe(
+      buildMildWeatherCloset(),
+      [makeForecast()],
+      [],
+      'relaxed',
+    );
+
+    expect(items.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('handles all activities at once', () => {
+    const allActivities: import('../../../types').TripActivity[] = [
+      'beach', 'hiking', 'business', 'sightseeing', 'dining', 'nightlife', 'skiing', 'casual',
+    ];
+
+    const { items } = generateCapsuleWardrobe(
+      buildMildWeatherCloset(),
+      [makeForecast()],
+      allActivities,
+      'relaxed',
+    );
+
+    expect(items.length).toBeGreaterThanOrEqual(6);
+    expect(items.length).toBeLessThanOrEqual(10);
+  });
+
 });

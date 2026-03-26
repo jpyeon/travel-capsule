@@ -73,8 +73,8 @@ Rules:
 
     const parsed = JSON.parse(text) as { activities: unknown; vibe: unknown };
 
-    const activities = (parsed.activities as string[]).filter((a): a is TripActivity =>
-      TRIP_ACTIVITIES.includes(a as TripActivity),
+    const activities = (Array.isArray(parsed.activities) ? parsed.activities : []).filter(
+      (a): a is TripActivity => typeof a === 'string' && TRIP_ACTIVITIES.includes(a as TripActivity),
     );
     const vibe = TRIP_VIBES.includes(parsed.vibe as TripVibe)
       ? (parsed.vibe as TripVibe)

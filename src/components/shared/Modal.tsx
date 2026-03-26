@@ -36,23 +36,25 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     >
       {/* Panel — stop click propagation so clicking inside doesn't close */}
       <div
-        className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto"
+        className="relative w-full max-w-md rounded-xl bg-white shadow-xl max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{title}</h2>
+        {/* Header — sticky so it stays visible when content scrolls */}
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-sand-200 bg-white px-6 py-4 rounded-t-xl">
+          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
           <button
             onClick={onClose}
             aria-label="Close modal"
-            className="rounded p-1 text-gray-400 hover:text-gray-600"
+            className="rounded-lg p-1.5 text-sand-400 hover:bg-sand-100 hover:text-gray-600 transition-colors"
           >
             ✕
           </button>
         </div>
 
-        {/* Content */}
-        {children}
+        {/* Content — scrollable */}
+        <div className="overflow-y-auto p-6">
+          {children}
+        </div>
       </div>
     </div>
   );

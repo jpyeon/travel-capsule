@@ -9,7 +9,7 @@ const Home: NextPage = () => {
 
   useEffect(() => {
     if (loading) return;
-    void router.replace(userId ? '/TripPage' : '/LoginPage');
+    void router.replace(userId ? '/DashboardPage' : '/LoginPage');
   }, [userId, loading, router]);
 
   return (

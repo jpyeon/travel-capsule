@@ -25,7 +25,7 @@ export async function uploadClosetImage(
     throw new Error('Image must be smaller than 5 MB.');
   }
 
-  const ext = file.name.split('.').pop() ?? 'jpg';
+  const ext = (file.name.split('.').pop() ?? 'jpg').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10) || 'jpg';
   const path = `${userId}/${crypto.randomUUID()}.${ext}`;
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file);

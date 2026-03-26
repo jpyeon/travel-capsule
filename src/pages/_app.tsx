@@ -9,7 +9,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <AuthProvider>
       <Toaster position="bottom-right" richColors />
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-sand-50">
         <NavBar />
         <ErrorBoundary>
           <Component {...pageProps} />

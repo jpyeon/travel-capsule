@@ -17,6 +17,7 @@ import type { ClothingCategory, WarmthLevel, FormalityLevel } from '../types';
 import { ClosetGrid } from '../components/closet/ClosetGrid';
 import { Button } from '../components/shared/Button';
 import { Modal } from '../components/shared/Modal';
+import { FormField as Field, INPUT_CLS } from '../components/shared/FormField';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -223,7 +224,7 @@ const ClosetPage: NextPage = () => {
   // ---------------------------------------------------------------------------
 
   return (
-    <main className="p-4 sm:p-8">
+    <main className="max-w-4xl mx-auto p-6 space-y-6">
       <ClosetGrid
         items={items}
         loading={loading}
@@ -269,7 +270,7 @@ const ClosetPage: NextPage = () => {
                   type="color"
                   value={form.color || '#000000'}
                   onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
-                  className="h-9 w-12 cursor-pointer rounded border border-gray-300 p-0.5"
+                  className="h-9 w-12 cursor-pointer rounded-lg border border-sand-300 p-0.5"
                 />
                 <input
                   required
@@ -341,7 +342,7 @@ const ClosetPage: NextPage = () => {
             </div>
             {suggestError && <p className="text-xs text-red-600 mt-1">{suggestError}</p>}
             {!suggestError && (
-              <p className="text-xs text-gray-400 mt-1">AI will suggest tags based on your description.</p>
+              <p className="text-xs text-sand-400 mt-1">AI will suggest tags based on your description.</p>
             )}
           </Field>
 
@@ -360,7 +361,7 @@ const ClosetPage: NextPage = () => {
               <img
                 src={form.imageUrl}
                 alt="Item preview"
-                className="mb-2 h-32 w-32 rounded-lg object-cover border border-gray-200"
+                className="mb-2 h-32 w-32 rounded-xl object-cover border border-sand-200"
               />
             )}
             <div className="flex items-center gap-2">
@@ -410,26 +411,3 @@ const ClosetPage: NextPage = () => {
 
 export default ClosetPage;
 
-// ---------------------------------------------------------------------------
-// Field — label wrapper
-// ---------------------------------------------------------------------------
-
-function Field({
-  label,
-  children,
-  className = '',
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`flex flex-col gap-1 ${className}`}>
-      <label className="text-xs font-medium text-gray-600">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-const INPUT_CLS =
-  'rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-1';

@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background-color: #daeee9;
+    color: #243837;
+  }
+}
+
 @media print {
   /* Hide everything except the packing list section when printing */
   nav,

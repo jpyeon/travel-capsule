@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import type { Trip } from '../../features/trips/types/trip';
 import { Button } from '../shared/Button';
+import { formatDateShort } from '../../utils/date.utils';
 
 export interface TripCardProps {
   trip: Trip;
-  onEdit: (trip: Trip) => void;
+  onEdit?: (trip: Trip) => void;
   onDelete: (tripId: string) => void;
 }
 
@@ -18,23 +19,23 @@ export function TripCard({ trip, onEdit, onDelete }: TripCardProps) {
       : null;
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4">
+    <div className="group flex flex-col gap-3 rounded-xl border border-sand-200 bg-white p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5">
 
       {/* Destination + dates */}
       <div>
         <h3 className="font-semibold text-gray-900">{trip.destination}</h3>
-        <p className="text-sm text-gray-500">
-          {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
+        <p className="text-sm text-sand-500">
+          {formatDateShort(trip.startDate)} – {formatDateShort(trip.endDate)}
         </p>
       </div>
 
       {/* Vibe + weather */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 capitalize">
+        <span className="rounded-full border border-sand-200 bg-sand-50 px-2.5 py-0.5 text-xs font-medium text-gray-600 capitalize">
           {trip.vibe}
         </span>
         {avgTemp !== null && (
-          <span className="text-xs text-gray-400">{avgTemp}°C avg</span>
+          <span className="text-xs text-sand-400">{avgTemp}°C avg</span>
         )}
       </div>
 
@@ -44,7 +45,7 @@ export function TripCard({ trip, onEdit, onDelete }: TripCardProps) {
           {trip.activities.map((activity) => (
             <span
               key={activity}
-              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500 capitalize"
+              className="rounded-md bg-accent-50 px-2 py-0.5 text-xs text-accent-700 capitalize"
             >
               {activity}
             </span>
@@ -55,12 +56,12 @@ export function TripCard({ trip, onEdit, onDelete }: TripCardProps) {
       {/* Actions */}
       <div className="flex flex-wrap gap-2 pt-1">
         <Link
-          href={`/CapsulePage?tripId=${trip.id}`}
-          className="rounded px-4 py-2 text-sm font-medium bg-black text-white hover:bg-gray-800 transition-colors"
+          href={`/TripDetailsPage?tripId=${trip.id}`}
+          className="rounded-lg px-4 py-2 text-sm font-medium bg-accent-500 text-white hover:bg-accent-600 active:scale-95 transition-all duration-150"
         >
-          Plan wardrobe
+          View trip
         </Link>
-        <Button variant="secondary" onClick={() => onEdit(trip)}>Edit</Button>
+        {onEdit && <Button variant="secondary" onClick={() => onEdit(trip)}>Edit</Button>}
         <Button variant="danger" onClick={() => onDelete(trip.id)}>Delete</Button>
       </div>
 
@@ -68,10 +69,3 @@ export function TripCard({ trip, onEdit, onDelete }: TripCardProps) {
   );
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}

@@ -14,7 +14,7 @@
 //   On generate — saves results to Supabase (upsert) before updating state.
 //   On togglePacked — optimistically updates local state, then patches DB.
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { generateCapsuleWardrobe, CapsuleRepository } from '../features/capsule';
@@ -68,6 +68,7 @@ export function useCapsuleWardrobe(
   const [savedAt, setSavedAt]         = useState<string | null>(null);
 
   const [repo] = useState(() => new CapsuleRepository(supabase));
+  const generatingRef = useRef(false);
 
   // --- Load saved capsule on mount / when trip changes ---
 
@@ -106,6 +107,8 @@ export function useCapsuleWardrobe(
   // --- Generate & persist ---
 
   const generate = useCallback(async () => {
+    if (generatingRef.current) return;
+    generatingRef.current = true;
     setGenerating(true);
     setError(null);
 
@@ -151,6 +154,7 @@ export function useCapsuleWardrobe(
       setError((err as Error).message);
       toast.error((err as Error).message);
     } finally {
+      generatingRef.current = false;
       setGenerating(false);
     }
   }, [trip, closetItems, userId, repo]);

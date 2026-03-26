@@ -17,11 +17,11 @@ export function ClosetGrid({ items, loading, error, onAdd, onEdit, onDelete }: C
   // --- Loading state ---
   if (loading) {
     return (
-      <div>
+      <div className="space-y-6">
         <Header onAdd={onAdd} />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-48 animate-pulse rounded-lg bg-gray-100" />
+            <div key={i} className="h-48 animate-pulse rounded-xl bg-sand-100" />
           ))}
         </div>
       </div>
@@ -31,9 +31,11 @@ export function ClosetGrid({ items, loading, error, onAdd, onEdit, onDelete }: C
   // --- Error state ---
   if (error) {
     return (
-      <div>
+      <div className="space-y-6">
         <Header onAdd={onAdd} />
-        <p className="text-red-600">Failed to load closet: {error}</p>
+        <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+          Failed to load closet: {error}
+        </p>
       </div>
     );
   }
@@ -41,10 +43,10 @@ export function ClosetGrid({ items, loading, error, onAdd, onEdit, onDelete }: C
   // --- Empty state ---
   if (items.length === 0) {
     return (
-      <div>
+      <div className="space-y-6">
         <Header onAdd={onAdd} />
-        <div className="flex flex-col items-center gap-4 py-16 text-center">
-          <p className="text-gray-500">Your closet is empty.</p>
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-sand-200 bg-white py-20 text-center shadow-card">
+          <p className="text-sm text-sand-500">Your closet is empty.</p>
           <Button onClick={onAdd}>Add your first item</Button>
         </div>
       </div>
@@ -53,7 +55,7 @@ export function ClosetGrid({ items, loading, error, onAdd, onEdit, onDelete }: C
 
   // --- Grid ---
   return (
-    <div>
+    <div className="space-y-6">
       <Header onAdd={onAdd} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => (
@@ -75,8 +77,8 @@ export function ClosetGrid({ items, loading, error, onAdd, onEdit, onDelete }: C
 
 function Header({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="mb-6 flex items-center justify-between">
-      <h2 className="text-xl font-semibold">My Closet</h2>
+    <div className="flex items-center justify-between">
+      <h1 className="text-2xl font-bold text-gray-900">My Closet</h1>
       <Button onClick={onAdd}>Add item</Button>
     </div>
   );

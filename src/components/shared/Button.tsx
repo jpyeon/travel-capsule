@@ -8,9 +8,9 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary:   'bg-black text-white hover:bg-gray-800 disabled:bg-gray-400',
-  secondary: 'bg-white text-black border border-gray-300 hover:bg-gray-50 disabled:text-gray-400',
-  danger:    'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300',
+  primary:   'bg-accent-500 text-white hover:bg-accent-600 active:scale-95 disabled:bg-sand-300 disabled:text-sand-500 focus:ring-accent-500',
+  secondary: 'bg-white text-gray-800 border border-sand-300 hover:border-sand-400 hover:bg-sand-50 active:scale-95 disabled:text-sand-400 focus:ring-accent-300',
+  danger:    'bg-red-600 text-white hover:bg-red-700 active:scale-95 disabled:bg-red-300 focus:ring-red-500',
 };
 
 export function Button({
@@ -25,9 +25,9 @@ export function Button({
     <button
       disabled={disabled || loading}
       className={[
-        'rounded px-4 py-2 text-sm font-medium transition-colors',
-        'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black',
-        'disabled:cursor-not-allowed',
+        'rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150',
+        'focus:outline-none focus:ring-2 focus:ring-offset-2',
+        'disabled:cursor-not-allowed disabled:active:scale-100',
         VARIANT_CLASSES[variant],
         className,
       ].join(' ')}

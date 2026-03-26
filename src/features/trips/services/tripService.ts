@@ -4,15 +4,7 @@ import { getWeatherForecast } from '../../../services/weather/weatherService';
 
 const TABLE = 'trips';
 
-export interface ITripService {
-  createTrip(userId: string, data: CreateTripInput): Promise<Trip>;
-  getTrips(userId: string): Promise<Trip[]>;
-  getTripById(tripId: string): Promise<Trip | null>;
-  updateTrip(tripId: string, data: UpdateTripInput): Promise<Trip>;
-  deleteTrip(tripId: string): Promise<void>;
-}
-
-export class TripService implements ITripService {
+export class TripService {
   constructor(private readonly supabase: SupabaseClient) {}
 
   async createTrip(userId: string, data: CreateTripInput): Promise<Trip> {
@@ -72,24 +64,6 @@ export class TripService implements ITripService {
     return (rows ?? []).map(toTrip);
   }
 
-  async getTripById(tripId: string): Promise<Trip | null> {
-    if (!tripId) throw new Error('tripId is required');
-
-    const { data: row, error } = await this.supabase
-      .from(TABLE)
-      .select('*')
-      .eq('id', tripId)
-      .single();
-
-    if (error) {
-      // PostgREST returns PGRST116 when no rows match; treat as not found
-      if (error.code === 'PGRST116') return null;
-      throw new Error(`Failed to fetch trip: ${error.message}`);
-    }
-
-    return toTrip(row);
-  }
-
   async updateTrip(tripId: string, data: UpdateTripInput): Promise<Trip> {
     if (!tripId) throw new Error('tripId is required');
     if (Object.keys(data).length === 0) throw new Error('No fields provided to update');
@@ -110,11 +84,11 @@ export class TripService implements ITripService {
         .select('latitude, longitude')
         .eq('id', tripId)
         .single();
-      if (coords) {
+      if (coords && typeof coords.latitude === 'number' && typeof coords.longitude === 'number') {
         try {
           patch.weather_forecast = await getWeatherForecast(
-            coords.latitude as number,
-            coords.longitude as number,
+            coords.latitude,
+            coords.longitude,
           );
         } catch {
           // best-effort — update proceeds without refreshing forecast
