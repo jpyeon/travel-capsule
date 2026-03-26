@@ -12,6 +12,24 @@ export type { WeatherForecast };
 
 const OPEN_METEO_BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 
+// ---------------------------------------------------------------------------
+// In-memory cache
+// ---------------------------------------------------------------------------
+
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+interface CacheEntry {
+  forecast: WeatherForecast[];
+  expiresAt: number;
+}
+
+const forecastCache = new Map<string, CacheEntry>();
+
+/** Round lat/lon to 2 decimal places (~1 km) to absorb float precision noise. */
+function cacheKey(latitude: number, longitude: number): string {
+  return `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
+}
+
 // Shape of the "daily" object returned by Open-Meteo when the query params
 // daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max are sent.
 interface OpenMeteoDailyResponse {
@@ -32,6 +50,9 @@ interface OpenMeteoApiResponse {
 /**
  * Fetch a daily weather forecast from Open-Meteo for the given coordinates.
  *
+ * Results are cached in memory for 30 minutes keyed by rounded lat/lon, so
+ * repeated calls for the same destination within a session skip the network.
+ *
  * Open-Meteo returns up to 16 days of forecast by default; the result is not
  * sliced here so callers can filter by trip date range if needed.
  *
@@ -40,15 +61,18 @@ interface OpenMeteoApiResponse {
  * @returns         Array of WeatherForecast, one entry per forecasted day.
  *
  * @throws          If the HTTP request fails or the response shape is invalid.
- *
- * TODO: Add a caching layer here (e.g. in-memory LRU or Redis) keyed on
- *       `${latitude},${longitude}` with a 30-minute TTL to avoid redundant
- *       network calls when multiple users plan trips to the same destination.
  */
 export async function getWeatherForecast(
   latitude: number,
   longitude: number,
 ): Promise<WeatherForecast[]> {
+  // --- Cache check ---
+  const key = cacheKey(latitude, longitude);
+  const cached = forecastCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.forecast;
+  }
+
   // --- Build request URL ---
   // Open-Meteo requires lat/lon plus the specific daily variables to include.
   const url = new URL(OPEN_METEO_BASE_URL);
@@ -81,8 +105,12 @@ export async function getWeatherForecast(
   const json: OpenMeteoApiResponse = await response.json();
 
   // --- Map response to domain type ---
-  // Open-Meteo returns parallel arrays under `daily`; we zip them by index.
-  return parseOpenMeteoResponse(json);
+  const forecast = parseOpenMeteoResponse(json);
+
+  // --- Store in cache ---
+  forecastCache.set(key, { forecast, expiresAt: Date.now() + CACHE_TTL_MS });
+
+  return forecast;
 }
 
 // ---------------------------------------------------------------------------

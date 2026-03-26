@@ -9,9 +9,7 @@ import { useTrip } from '../hooks/useTrip';
 import { useCloset } from '../hooks/useCloset';
 import { useCapsuleWardrobe } from '../hooks/useCapsuleWardrobe';
 import type { Trip } from '../features/trips/types/trip';
-import type { ClosetItem as CanonicalClosetItem } from '../types';
-import type { ClosetItem } from '../closet/types/closet.types';
-import type { DailyOutfit } from '../types';
+import type { ClosetItem, DailyOutfit } from '../types';
 import type { PackingList, ClothingPackEntry } from '../features/packing/services/packingService';
 import type { CapsuleWardrobe } from '../algorithms/capsule/capsuleGenerator';
 import { Button } from '../components/shared/Button';
@@ -77,11 +75,7 @@ const CapsulePage: NextPage = () => {
       {!loading && selectedTrip && userId && (
         <CapsuleSection
           trip={selectedTrip}
-          // The closet module uses `warmth`/`formality` field names while the
-          // canonical ClosetItem type (used by the algorithm) uses
-          // `warmthScore`/`formalityScore`. This pre-existing mismatch should
-          // be resolved by unifying the two ClosetItem types.
-          closetItems={closetItems as unknown as CanonicalClosetItem[]}
+          closetItems={closetItems}
           userId={userId}
         />
       )}
@@ -101,7 +95,7 @@ function CapsuleSection({
   userId,
 }: {
   trip: Trip;
-  closetItems: CanonicalClosetItem[];
+  closetItems: ClosetItem[];
   userId: string;
 }) {
   const { capsule, outfits, packingList, packedItems, loading, generating, error, savedAt, generate, togglePacked, reset } =
@@ -253,7 +247,7 @@ function DailyOutfitsSection({
                     {outfit.activity}
                   </span>
                   <div className="flex flex-wrap gap-2">
-                    {outfit.items.length === 0 ? (
+                    {outfit.items.length === 0 && outfit.warnings.length === 0 ? (
                       <span className="text-xs text-gray-400">No items assigned</span>
                     ) : (
                       outfit.items.map((item) => {
@@ -273,6 +267,13 @@ function DailyOutfitsSection({
                       })
                     )}
                   </div>
+                  {outfit.warnings.length > 0 && (
+                    <ul className="mt-2 flex flex-col gap-0.5">
+                      {outfit.warnings.map((w) => (
+                        <li key={w} className="text-xs text-amber-600">{w}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ))}
             </div>

@@ -29,6 +29,15 @@ export function ClosetItemCard({ item, onEdit, onDelete }: ClosetItemCardProps) 
         </div>
       </div>
 
+      {/* Photo */}
+      {item.imageUrl && (
+        <img
+          src={item.imageUrl}
+          alt={item.name}
+          className="h-32 w-full rounded object-cover"
+        />
+      )}
+
       {/* Warmth + formality dot scales */}
       <div className="flex flex-col gap-1">
         <DotScale value={item.warmthScore} label="Warmth" />

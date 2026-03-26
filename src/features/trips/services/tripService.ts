@@ -22,9 +22,8 @@ export class TripService implements ITripService {
     // Called here so the forecast is stored with the trip from the moment it is
     // created, giving downstream features (capsule generator, outfit engine) access
     // to weather data without a separate round-trip.
-    //
-    // TODO: if caching is added to getWeatherForecast(), the cache key should
-    //       incorporate the trip's date range to avoid stale forecasts for future dates.
+    // Results are cached in weatherService for 30 min — repeated calls for the
+    // same destination within a session are served from memory.
     let weatherForecast: WeatherForecast[] = [];
     try {
       weatherForecast = await getWeatherForecast(data.latitude, data.longitude);

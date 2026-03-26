@@ -1,25 +1,10 @@
 // DTOs (persistence-layer input/output shapes) for the closet feature module.
-// These are NOT canonical domain models — see src/types/wardrobe.types.ts for ClosetItem.
+// ClosetItem is the canonical domain model — imported from src/types/wardrobe.types.ts.
 
 import type { ClothingCategory, WarmthLevel, FormalityLevel } from '../../types/shared.types';
 
 export type { ClothingCategory, WarmthLevel, FormalityLevel };
-
-export interface ClosetItem {
-  id: string;
-  userId: string;
-  name: string;
-  category: ClothingCategory;
-  color: string;
-  material: string;
-  warmthScore: WarmthLevel;
-  formalityScore: FormalityLevel;
-  imageUrl: string | null;
-  // Stored as text[] in Postgres; empty array when no tags are set.
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-}
+export type { ClosetItem } from '../../types/wardrobe.types';
 
 export interface CreateClosetItemInput {
   name: string;

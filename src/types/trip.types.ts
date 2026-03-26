@@ -48,6 +48,8 @@ export interface DailyOutfit {
   items: ClosetItem[];
   activity: TripActivity;
   weatherContext: WeatherForecast;
+  /** Non-empty when a required category (top/bottom/footwear) could not be filled. */
+  warnings: string[];
 }
 
 export interface TripDay {

@@ -53,6 +53,7 @@ function makeDay(
     activity,
     weatherContext: makeWeather({ date }),
     items: [],
+    warnings: [],
   }));
 
   return { date, tripId: 'trip-test', outfits: slots };
@@ -375,7 +376,7 @@ describe('output shape', () => {
     const day: TripDay = {
       date: '2026-04-01',
       tripId: 'trip-test',
-      outfits: [{ date: '2026-04-01', activity: 'casual', weatherContext: weather, items: [] }],
+      outfits: [{ date: '2026-04-01', activity: 'casual', weatherContext: weather, items: [], warnings: [] }],
     };
 
     const outfits = generateDailyOutfits(baseCloset(), [day]);

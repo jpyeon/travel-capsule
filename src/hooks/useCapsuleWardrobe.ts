@@ -120,7 +120,20 @@ export function useCapsuleWardrobe(
       const forecastByDate = buildForecastIndex(trip.weatherForecast);
       const tripDays = buildTripDays(trip, forecastByDate);
       const generatedOutfits = generateDailyOutfits(generatedCapsule.items, tripDays);
-      const generatedPackingList = generatePackingList(generatedOutfits);
+
+      const numTripDays = dateRange(trip.startDate, trip.endDate).length;
+      const avgTemp = trip.weatherForecast.length > 0
+        ? trip.weatherForecast.reduce((s, f) => s + f.temperatureHigh, 0) / trip.weatherForecast.length
+        : 20;
+      const rainRisk = trip.weatherForecast.length > 0
+        ? trip.weatherForecast.reduce((s, f) => s + f.rainProbability, 0) / trip.weatherForecast.length
+        : 0;
+      const generatedPackingList = generatePackingList(generatedOutfits, {
+        tripDays: numTripDays,
+        avgTemp,
+        rainRisk,
+        activities: trip.activities,
+      });
       const generatedAt = new Date().toISOString();
 
       await repo.upsert({
@@ -201,6 +214,7 @@ function buildTripDays(
       activity,
       weatherContext: forecast,
       items: [],
+      warnings: [],
     }));
 
     return { date, tripId: trip.id, outfits: slots };

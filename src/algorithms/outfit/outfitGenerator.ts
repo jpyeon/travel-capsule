@@ -14,8 +14,10 @@
  *   2. Filter by activity         — respect formality requirements
  *   3. Filter by streak           — avoid wearing any item more than
  *                                    2 consecutive days
- *   4. Rank by color compatibility — prefer neutral / well-pairing colors
+ *   4. Rank by color compatibility — context-aware pair scoring
  *   5. Pick best candidates        — greedy category fill
+ *   6. Fallback                   — if a required category is still missing,
+ *                                    retry without streak restriction
  */
 
 import type { ClosetItem, ClothingCategory, TripActivity, FormalityLevel } from '../../types';
@@ -34,8 +36,6 @@ const MAX_CONSECUTIVE_DAYS = 2;
  * Items whose formalityScore falls outside this window are excluded.
  *
  * FormalityLevel scale: 1 (very casual) → 5 (black tie)
- *
- * TODO: expand this map as new TripActivity values are added
  */
 const ACTIVITY_FORMALITY: Record<TripActivity, { min: FormalityLevel; max: FormalityLevel }> = {
   beach:       { min: 1, max: 2 },
@@ -48,47 +48,104 @@ const ACTIVITY_FORMALITY: Record<TripActivity, { min: FormalityLevel; max: Forma
   skiing:      { min: 1, max: 2 },
 };
 
-/**
- * Colors considered "neutral" — they pair well with almost anything and
- * score highest in color-compatibility ranking.
- *
- * TODO: replace with a full compatibility matrix once a color taxonomy is defined
- */
-const NEUTRAL_COLORS = new Set([
-  'black', 'white', 'grey', 'gray', 'navy', 'beige', 'cream', 'brown', 'tan', 'ivory',
-]);
-
 /** Minimum categories required for a complete outfit. */
 const REQUIRED_CATEGORIES: ClothingCategory[] = ['tops', 'bottoms', 'footwear'];
+
+// ---------------------------------------------------------------------------
+// Color compatibility
+// ---------------------------------------------------------------------------
+
+type ColorGroup = 'neutral' | 'earth' | 'cool' | 'warm' | 'bright';
+
+const COLOR_GROUPS: Record<ColorGroup, Set<string>> = {
+  neutral: new Set([
+    'black', 'white', 'grey', 'gray', 'charcoal', 'navy', 'slate', 'beige',
+    'cream', 'ivory', 'tan', 'taupe', 'stone', 'sand', 'khaki', 'camel', 'brown',
+  ]),
+  earth: new Set([
+    'olive', 'rust', 'terracotta', 'burgundy', 'wine', 'forest', 'moss',
+    'sage', 'sienna', 'ochre', 'amber',
+  ]),
+  cool: new Set([
+    'blue', 'teal', 'mint', 'lavender', 'purple', 'lilac', 'turquoise',
+    'sky', 'indigo', 'violet', 'aqua', 'cyan',
+  ]),
+  warm: new Set([
+    'red', 'orange', 'yellow', 'pink', 'coral', 'peach', 'gold',
+    'mustard', 'salmon', 'magenta', 'rose',
+  ]),
+  // 'bright' is the catch-all for unclassified colors
+  bright: new Set(),
+};
+
+/**
+ * Pair compatibility scores between color groups (symmetric matrix).
+ * 1.0 = perfect match, 0.0 = strong clash.
+ */
+const PAIR_SCORES: Record<ColorGroup, Record<ColorGroup, number>> = {
+  neutral: { neutral: 1.0, earth: 0.9, cool: 0.9, warm: 0.9, bright: 0.8 },
+  earth:   { neutral: 0.9, earth: 0.8, cool: 0.5, warm: 0.6, bright: 0.4 },
+  cool:    { neutral: 0.9, earth: 0.5, cool: 0.7, warm: 0.3, bright: 0.5 },
+  warm:    { neutral: 0.9, earth: 0.6, cool: 0.3, warm: 0.4, bright: 0.4 },
+  bright:  { neutral: 0.8, earth: 0.4, cool: 0.5, warm: 0.4, bright: 0.2 },
+};
+
+/** Base score when no items are selected yet — rewards neutral/earthy tones. */
+const BASE_GROUP_SCORE: Record<ColorGroup, number> = {
+  neutral: 1.0,
+  earth:   0.8,
+  cool:    0.6,
+  warm:    0.6,
+  bright:  0.4,
+};
+
+function colorGroup(color: string): ColorGroup {
+  const c = color.toLowerCase().trim();
+  for (const [group, colors] of Object.entries(COLOR_GROUPS) as [ColorGroup, Set<string>][]) {
+    if (group === 'bright') continue; // catch-all, checked last
+    if (colors.has(c)) return group;
+  }
+  return 'bright';
+}
+
+/**
+ * Score a candidate item's color compatibility against already-selected items.
+ * Returns a value in [0, 1] — higher is better.
+ */
+function scoreCandidate(candidate: ClosetItem, selected: ClosetItem[]): number {
+  const cg = colorGroup(candidate.color);
+  if (selected.length === 0) return BASE_GROUP_SCORE[cg];
+
+  const scores = selected.map((s) => PAIR_SCORES[cg][colorGroup(s.color)]);
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+
+/**
+ * Sort items by color compatibility with already-selected items.
+ * Re-call after each pick so ranking reflects the current selection context.
+ */
+function rankByColorCompatibility(items: ClosetItem[], selected: ClosetItem[]): ClosetItem[] {
+  return [...items].sort((a, b) => scoreCandidate(b, selected) - scoreCandidate(a, selected));
+}
 
 // ---------------------------------------------------------------------------
 // Streak tracking
 // ---------------------------------------------------------------------------
 
-/**
- * Tracks how many consecutive days each item has been worn.
- * Keyed by ClosetItem.id.
- */
 type StreakMap = Map<string, number>;
 
 function buildEmptyStreakMap(): StreakMap {
   return new Map();
 }
 
-/** Record that `itemId` was worn today; increment or start its streak. */
 function recordWorn(streak: StreakMap, itemId: string): void {
   streak.set(itemId, (streak.get(itemId) ?? 0) + 1);
 }
 
-/** Record that `itemId` was NOT worn today; reset its streak to 0. */
 function recordRested(streak: StreakMap, itemId: string): void {
   streak.set(itemId, 0);
 }
 
-/**
- * Return true if the item has already been worn the maximum allowed
- * consecutive days and must rest today.
- */
 function isOnStreak(streak: StreakMap, itemId: string): boolean {
   return (streak.get(itemId) ?? 0) >= MAX_CONSECUTIVE_DAYS;
 }
@@ -97,29 +154,16 @@ function isOnStreak(streak: StreakMap, itemId: string): boolean {
 // Entry point
 // ---------------------------------------------------------------------------
 
-/**
- * Generate a complete `DailyOutfit` for every outfit slot across all trip days.
- *
- * `TripDay.outfits` is treated as a list of pre-defined slots — each slot
- * already knows its `activity` and `weatherContext`; this function fills in
- * the `items`.  Days are processed in chronological order so that the streak
- * tracker stays consistent.
- *
- * @param capsuleItems  Items selected by the capsule wardrobe generator.
- * @param tripDays      Trip days sorted ascending by date.
- */
 export function generateDailyOutfits(
   capsuleItems: ClosetItem[],
   tripDays: TripDay[],
 ): DailyOutfit[] {
-  // Sort days ascending so streak tracking is deterministic
   const sortedDays = [...tripDays].sort((a, b) => a.date.localeCompare(b.date));
 
   const streak = buildEmptyStreakMap();
   const results: DailyOutfit[] = [];
 
   for (const day of sortedDays) {
-    // Track which items were actually worn on this day (across all slots)
     const wornTodayIds = new Set<string>();
 
     for (const slot of day.outfits) {
@@ -131,7 +175,6 @@ export function generateDailyOutfits(
       }
     }
 
-    // Update streaks: worn → increment, rested → reset
     for (const item of capsuleItems) {
       if (wornTodayIds.has(item.id)) {
         recordWorn(streak, item.id);
@@ -154,8 +197,11 @@ export function generateDailyOutfits(
  * Strategy:
  *   1. Narrow the pool to items suitable for this activity (formality check)
  *   2. Remove items currently on a streak (worn too many days in a row)
- *   3. Sort remaining items by color-compatibility score (neutral-first)
- *   4. Greedily fill required categories, then optionally add accessories
+ *   3. Greedily fill required categories; rank by color compatibility against
+ *      already-selected items at each step
+ *   4. Fallback: for any required category still missing, retry from the full
+ *      activity pool (ignoring streak) before giving up
+ *   5. Emit a warning for any category that remains unfilled after fallback
  */
 function buildOutfit(
   capsuleItems: ClosetItem[],
@@ -167,75 +213,29 @@ function buildOutfit(
   // Step 1 — filter by activity formality
   const activityPool = filterByActivity(capsuleItems, activity);
 
-  // Step 2 — filter out streaked items
+  // Step 2 — filter out streaked items for the primary attempt
   const freshPool = filterByStreak(activityPool, streak);
 
-  // Step 3 — rank by color compatibility
-  const rankedPool = rankByColorCompatibility(freshPool);
+  // Steps 3–4 — pick items with color-aware ranking + streak fallback
+  const { items: selected, warnings } = pickItems(freshPool, activityPool, activity);
 
-  // Step 4 — pick items to cover required categories
-  const selected = pickItems(rankedPool, activity);
-
-  // TODO: if selected is missing a required category, fall back to streaked items
-  //       rather than returning an incomplete outfit.
-
-  return {
-    date,
-    items: selected,
-    activity,
-    weatherContext,
-  };
+  return { date, items: selected, activity, weatherContext, warnings };
 }
 
 // ---------------------------------------------------------------------------
 // Filtering helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Keep only items whose formalityScore is within the activity's acceptable
- * window.  Items without a matching activity rule are kept by default.
- */
 function filterByActivity(items: ClosetItem[], activity: TripActivity): ClosetItem[] {
   const rule = ACTIVITY_FORMALITY[activity];
   if (!rule) return items;
-
   return items.filter(
     (item) => item.formalityScore >= rule.min && item.formalityScore <= rule.max,
   );
 }
 
-/**
- * Remove items that have been worn the maximum consecutive days and need
- * to be rested.
- *
- * If filtering leaves a category without any candidates, the caller may
- * choose to re-include streaked items as a last resort (not done here —
- * see TODO in buildOutfit).
- */
 function filterByStreak(items: ClosetItem[], streak: StreakMap): ClosetItem[] {
   return items.filter((item) => !isOnStreak(streak, item.id));
-}
-
-// ---------------------------------------------------------------------------
-// Ranking helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Sort items so that neutral / highly-compatible colors appear first.
- *
- * Current implementation is intentionally simple:
- *   - Neutral colors → score 1.0
- *   - All others     → score 0.5
- *
- * TODO: replace with a proper compatibility matrix that scores item pairs
- *       rather than individual items.  Ideally this would consider the full
- *       set of already-selected items and penalise clashing combinations.
- */
-function rankByColorCompatibility(items: ClosetItem[]): ClosetItem[] {
-  const colorScore = (item: ClosetItem): number =>
-    NEUTRAL_COLORS.has(item.color.toLowerCase()) ? 1.0 : 0.5;
-
-  return [...items].sort((a, b) => colorScore(b) - colorScore(a));
 }
 
 // ---------------------------------------------------------------------------
@@ -243,41 +243,59 @@ function rankByColorCompatibility(items: ClosetItem[]): ClosetItem[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Greedily fill required categories first (tops, bottoms, footwear), then
- * add an optional outerwear and one accessory if available.
+ * Greedily fill required categories (tops, bottoms, footwear), then
+ * optionally add outerwear and one accessory.
  *
- * Items are already sorted by color-compatibility score, so the first
- * candidate in each category is always the best available choice.
+ * Color ranking is context-aware: after each pick, the remaining pool is
+ * re-ranked against the items already selected so that chosen pieces
+ * coordinate with each other.
+ *
+ * If a required category is missing from `freshPool`, a second attempt is
+ * made using `activityPool` (streak restriction lifted). Any category still
+ * missing after the fallback is recorded in `warnings`.
  */
-function pickItems(rankedPool: ClosetItem[], _activity: TripActivity): ClosetItem[] {
+function pickItems(
+  freshPool: ClosetItem[],
+  activityPool: ClosetItem[],
+  _activity: TripActivity,
+): { items: ClosetItem[]; warnings: string[] } {
   const selected: ClosetItem[] = [];
   const usedIds = new Set<string>();
 
-  // Helper: pick the first available item in the given category
-  const pickCategory = (category: ClothingCategory): void => {
-    const candidate = rankedPool.find(
-      (item) => item.category === category && !usedIds.has(item.id),
+  const pick = (pool: ClosetItem[], category: ClothingCategory): ClosetItem | null => {
+    const ranked = rankByColorCompatibility(
+      pool.filter((i) => i.category === category && !usedIds.has(i.id)),
+      selected,
     );
+    const candidate = ranked[0] ?? null;
     if (candidate) {
       selected.push(candidate);
       usedIds.add(candidate.id);
     }
-    // TODO: if no candidate found, log a warning — the capsule may be missing
-    //       this category entirely for this activity + formality combination.
+    return candidate;
   };
 
-  // Required: every outfit needs these three
+  // Primary pass — streak-filtered pool
+  const missingAfterPrimary: ClothingCategory[] = [];
   for (const category of REQUIRED_CATEGORIES) {
-    pickCategory(category);
+    if (!pick(freshPool, category)) {
+      missingAfterPrimary.push(category);
+    }
   }
 
-  // Optional: add outerwear if the capsule includes it (e.g. for cold/rainy days)
-  pickCategory('outerwear');
+  // Fallback pass — full activity pool (streak ignored) for any gap
+  const warnings: string[] = [];
+  for (const category of missingAfterPrimary) {
+    if (!pick(activityPool, category)) {
+      warnings.push(
+        `No ${category} available for ${_activity} — add more items to your closet.`,
+      );
+    }
+  }
 
-  // Optional: add one accessory for completeness
-  // TODO: only add accessories when activity context calls for them
-  //       (e.g. sunglasses for beach, scarf for cold weather)
-  pickCategory('accessories');
+  // Optional additions (best-effort, no warnings if absent)
+  pick(freshPool.length > 0 ? freshPool : activityPool, 'outerwear');
+  pick(freshPool.length > 0 ? freshPool : activityPool, 'accessories');
 
-  return selected;
+  return { items: selected, warnings };
 }
