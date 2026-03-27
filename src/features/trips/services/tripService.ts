@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import type { Trip, CreateTripInput, UpdateTripInput, WeatherForecast } from '../types/trip.ts';
+import type { Trip, CreateTripInput, UpdateTripInput, WeatherForecast, LuggageSize } from '../types/trip.ts';
 import { getWeatherForecast } from '../../../services/weather/weatherService';
 
 const TABLE = 'trips';
@@ -39,6 +39,8 @@ export class TripService {
         // Persist the forecast as a JSONB column so it can be read back without
         // an additional API call. Column name: weather_forecast.
         weather_forecast: weatherForecast,
+        luggage_size: data.luggageSize,
+        has_laundry_access: data.hasLaundryAccess,
       })
       .select()
       .single();
@@ -75,6 +77,8 @@ export class TripService {
     if (data.endDate !== undefined) patch.end_date = data.endDate;
     if (data.activities !== undefined) patch.activities = data.activities;
     if (data.vibe !== undefined) patch.vibe = data.vibe;
+    if (data.luggageSize !== undefined) patch.luggage_size = data.luggageSize;
+    if (data.hasLaundryAccess !== undefined) patch.has_laundry_access = data.hasLaundryAccess;
 
     // Re-fetch weather when dates change — the stored forecast is keyed to a
     // specific date window, so a date edit makes it stale.
@@ -159,6 +163,8 @@ function toTrip(row: Record<string, unknown>): Trip {
     // weather_forecast is stored as JSONB; cast directly — shape is guaranteed
     // by the insert in createTrip().
     weatherForecast: (row.weather_forecast as Trip['weatherForecast']) ?? [],
+    luggageSize: (row.luggage_size as LuggageSize) ?? 'carry-on',
+    hasLaundryAccess: (row.has_laundry_access as boolean) ?? false,
     createdAt: row.created_at as string,
   };
 }

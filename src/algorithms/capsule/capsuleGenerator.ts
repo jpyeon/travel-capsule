@@ -15,7 +15,7 @@
  */
 
 import type { ClosetItem, ClothingCategory, TripActivity, TripVibe, FormalityLevel } from '../../types';
-import type { WeatherForecast } from '../../features/trips/types/trip';
+import type { WeatherForecast, LuggageSize } from '../../features/trips/types/trip';
 import { assessWeather, COLD_THRESHOLD_C, HOT_THRESHOLD_C, RAIN_RISK_THRESHOLD } from '../../utils/weatherUtils';
 
 // ---------------------------------------------------------------------------
@@ -56,6 +56,13 @@ export interface CapsuleWardrobe {
 
 const CAPSULE_MIN = 6;
 const CAPSULE_MAX = 10;
+
+/** Capsule size limits and category floors per luggage size. */
+const LUGGAGE_CONFIG: Record<LuggageSize, { max: number; topMin: number; bottomMin: number }> = {
+  backpack:  { max: 6,  topMin: 2, bottomMin: 1 },
+  'carry-on': { max: 10, topMin: 3, bottomMin: 2 },
+  checked:   { max: 14, topMin: 4, bottomMin: 3 },
+};
 
 const ACTIVITY_PREFERENCES: Record<TripActivity, { formality: 'low' | 'mid' | 'high'; categories: ClothingCategory[] }> = {
   beach:       { formality: 'low',  categories: ['activewear', 'dresses'] },
@@ -105,6 +112,8 @@ export function generateCapsuleWardrobe(
   weatherForecast: WeatherForecast[],
   activities: TripActivity[],
   vibe: TripVibe,
+  luggageSize: LuggageSize = 'carry-on',
+  hasLaundryAccess = false,
 ): CapsuleWardrobe {
   // --- Step 1: Assess weather conditions ---
   const { avgTemp, rainRisk } = assessWeather(weatherForecast);
@@ -113,24 +122,32 @@ export function generateCapsuleWardrobe(
   const suitable = filterByWeather(closetItems, avgTemp, rainRisk);
 
   // --- Step 3: Score every suitable item once ---
-  // Scoring happens before selection so both the mandatory phase and the
-  // filler phase always pick the best available item per category.
   const scores = scoreItems(suitable, rainRisk, activities, vibe);
   const scoreById = new Map(scores.map((s) => [s.itemId, s]));
 
   // --- Steps 4 & 5: Build the capsule ---
+  // Derive limits from luggage size; laundry access reduces tops requirement by 1.
+  const luggage = LUGGAGE_CONFIG[luggageSize];
+  const capsuleMax = luggage.max;
+  const categoryMinimums: Partial<Record<ClothingCategory, number>> = {
+    ...CATEGORY_MINIMUMS,
+    tops:    Math.max(1, luggage.topMin - (hasLaundryAccess ? 1 : 0)),
+    bottoms: Math.max(1, luggage.bottomMin - (hasLaundryAccess ? 1 : 0)),
+  };
+
   const selected: ClosetItem[] = [];
   const usedIds  = new Set<string>();
 
-  enforceCategoryMinimums(suitable, scoreById, selected, usedIds);
-  fillByVersatility(suitable, scoreById, selected, usedIds);
+  enforceCategoryMinimums(suitable, scoreById, selected, usedIds, categoryMinimums);
+  fillByVersatility(suitable, scoreById, selected, usedIds, capsuleMax);
 
   // Throw early if the closet is too sparse to hit the minimum capsule size.
   // The caller (service layer) should surface this error to the user.
-  if (selected.length < CAPSULE_MIN) {
+  const minRequired = Math.min(CAPSULE_MIN, capsuleMax);
+  if (selected.length < minRequired) {
     throw new Error(
       `Cannot build a capsule wardrobe: only ${selected.length} suitable items found ` +
-      `(minimum is ${CAPSULE_MIN}). Add more items to the closet or broaden the trip dates.`,
+      `(minimum is ${minRequired}). Add more items to the closet or broaden the trip dates.`,
     );
   }
 
@@ -277,11 +294,11 @@ function enforceCategoryMinimums(
   scoreById: Map<string, ItemScore>,
   selected: ClosetItem[],
   usedIds: Set<string>,
+  categoryMinimums: Partial<Record<ClothingCategory, number>> = CATEGORY_MINIMUMS,
 ): void {
-  // Sort once, highest score first, so every `.find()` below is optimal
   const sorted = sortByScore(items, scoreById);
 
-  for (const [category, minimum] of Object.entries(CATEGORY_MINIMUMS) as [ClothingCategory, number][]) {
+  for (const [category, minimum] of Object.entries(categoryMinimums) as [ClothingCategory, number][]) {
     let filled = 0;
 
     for (const item of sorted) {
@@ -314,11 +331,12 @@ function fillByVersatility(
   scoreById: Map<string, ItemScore>,
   selected: ClosetItem[],
   usedIds: Set<string>,
+  capsuleMax: number = CAPSULE_MAX,
 ): void {
   const fillers = sortByScore(items, scoreById).filter((item) => !usedIds.has(item.id));
 
   for (const item of fillers) {
-    if (selected.length >= CAPSULE_MAX) break;
+    if (selected.length >= capsuleMax) break;
     selected.push(item);
     usedIds.add(item.id);
   }

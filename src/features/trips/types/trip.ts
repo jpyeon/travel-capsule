@@ -1,10 +1,22 @@
 // Domain type and DTOs for the trips feature module.
-// TripActivity and TripVibe are re-exported from global types to avoid duplication.
+// TripActivity and TripVibe are defined here (canonical source) and re-exported
+// via src/types/trip.types.ts → src/types/index.ts for global consumers.
 
 import type { ISODate, ISODateTime } from '../../../types/shared.types';
 
-export type { TripActivity, TripVibe } from '../../../types/trip.types';
-import type { TripActivity, TripVibe } from '../../../types/trip.types';
+// Preset values used for formality matching and AI parsing.
+// Widened to string so users can add custom activities.
+export type TripActivity = string;
+
+export type TripVibe =
+  | 'relaxed'
+  | 'adventurous'
+  | 'formal'
+  | 'romantic'
+  | 'family'
+  | 'backpacker';
+
+export type LuggageSize = 'backpack' | 'carry-on' | 'checked';
 
 // One day's weather data as returned by the Open-Meteo forecast API and
 // attached to a Trip at creation time.
@@ -26,6 +38,8 @@ export interface Trip {
   // Weather fetched from Open-Meteo at trip creation time; empty array if the
   // API call failed (the trip is still created).
   weatherForecast: WeatherForecast[];
+  luggageSize: LuggageSize;
+  hasLaundryAccess: boolean;
   createdAt: ISODateTime;
 }
 
@@ -39,6 +53,8 @@ export interface CreateTripInput {
   // Required so Open-Meteo can return a forecast without server-side geocoding.
   latitude: number;
   longitude: number;
+  luggageSize: LuggageSize;
+  hasLaundryAccess: boolean;
 }
 
 export interface UpdateTripInput {
@@ -47,4 +63,6 @@ export interface UpdateTripInput {
   endDate?: ISODate;
   activities?: TripActivity[];
   vibe?: TripVibe;
+  luggageSize?: LuggageSize;
+  hasLaundryAccess?: boolean;
 }

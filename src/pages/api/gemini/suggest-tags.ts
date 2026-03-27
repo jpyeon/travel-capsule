@@ -6,10 +6,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getAuthUser } from '../../../lib/apiAuth';
-
-function stripJsonFences(text: string): string {
-  return text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-}
+import { stripJsonFences } from '../../../utils/gemini.utils';
+import { errorMessage } from '../../../utils/error.utils';
 
 export interface SuggestTagsResponse {
   tags: string[];
@@ -71,6 +69,6 @@ Rules:
 
     return res.status(200).json({ tags });
   } catch (err) {
-    return res.status(500).json({ error: (err as Error).message ?? 'Failed to suggest tags' });
+    return res.status(500).json({ error: errorMessage(err) });
   }
 }

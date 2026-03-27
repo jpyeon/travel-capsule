@@ -132,6 +132,8 @@ export function useCapsuleWardrobe(
         trip.weatherForecast,
         trip.activities,
         trip.vibe,
+        trip.luggageSize,
+        trip.hasLaundryAccess,
       );
 
       const forecastByDate = buildForecastIndex(trip.weatherForecast);
@@ -145,6 +147,7 @@ export function useCapsuleWardrobe(
         avgTemp,
         rainRisk,
         activities: trip.activities,
+        hasLaundryAccess: trip.hasLaundryAccess,
       });
       const generatedAt = new Date().toISOString();
 

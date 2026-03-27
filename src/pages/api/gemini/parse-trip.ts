@@ -7,10 +7,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { TripActivity, TripVibe } from '../../../types';
 import { getAuthUser } from '../../../lib/apiAuth';
-
-function stripJsonFences(text: string): string {
-  return text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-}
+import { stripJsonFences } from '../../../utils/gemini.utils';
+import { errorMessage } from '../../../utils/error.utils';
 
 const TRIP_ACTIVITIES: TripActivity[] = [
   'beach', 'hiking', 'business', 'sightseeing', 'dining', 'nightlife', 'skiing', 'casual',
@@ -86,6 +84,6 @@ Rules:
 
     return res.status(200).json({ activities: activities.length ? activities : ['casual'], vibe });
   } catch (err) {
-    return res.status(500).json({ error: (err as Error).message ?? 'Failed to parse trip description' });
+    return res.status(500).json({ error: errorMessage(err) });
   }
 }

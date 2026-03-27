@@ -61,7 +61,7 @@ export default async function handler(
   try {
     normalized = await normalizeProfilePhoto(rawBuffer);
   } catch (err) {
-    return res.status(422).json({ error: (err as Error).message });
+    return res.status(422).json({ error: err instanceof Error ? err.message : 'Upload failed' });
   }
 
   // Upload to Supabase Storage + save URL
@@ -78,7 +78,7 @@ export default async function handler(
     imageUrl = await repo.uploadProfileImage(user.id, normalized);
     await repo.upsertProfileImageUrl(user.id, imageUrl);
   } catch (err) {
-    return res.status(500).json({ error: (err as Error).message });
+    return res.status(500).json({ error: err instanceof Error ? err.message : 'Upload failed' });
   }
 
   return res.status(200).json({ imageUrl });

@@ -42,6 +42,11 @@ function defaultContext(overrides: Partial<PackingContext> = {}): PackingContext
   return { tripDays: 5, avgTemp: 20, rainRisk: 10, activities: ['casual'], ...overrides };
 }
 
+/** Helper: extract toiletry labels for backward-compat assertions. */
+function toiletryLabels(ctx: Partial<PackingContext> = {}) {
+  return generatePackingList([], defaultContext(ctx)).toiletries.map((t) => t.label);
+}
+
 // ---------------------------------------------------------------------------
 // 1. Clothing aggregation
 // ---------------------------------------------------------------------------
@@ -177,77 +182,77 @@ describe('accessory collection', () => {
 
 describe('toiletries', () => {
   it('always includes core items regardless of context', () => {
-    const { toiletries } = generatePackingList([], defaultContext());
+    const labels = toiletryLabels();
 
-    expect(toiletries).toContain('Toothbrush & toothpaste');
-    expect(toiletries).toContain('Deodorant');
-    expect(toiletries).toContain('Body wash / soap');
-    expect(toiletries).toContain('Any prescription medications');
-    expect(toiletries).toContain('Pain reliever (e.g. ibuprofen)');
-    expect(toiletries).toContain('Bandages / first-aid essentials');
+    expect(labels).toContain('Toothbrush & toothpaste');
+    expect(labels).toContain('Deodorant');
+    expect(labels).toContain('Body wash / soap');
+    expect(labels).toContain('Any prescription medications');
+    expect(labels).toContain('Pain reliever (e.g. ibuprofen)');
+    expect(labels).toContain('Bandages / first-aid essentials');
   });
 
   it('adds shampoo, moisturiser, razor for trips of 3+ days', () => {
-    const { toiletries } = generatePackingList([], defaultContext({ tripDays: 3 }));
-    expect(toiletries).toContain('Shampoo & conditioner');
-    expect(toiletries).toContain('Moisturiser');
-    expect(toiletries).toContain('Razor');
+    const labels = toiletryLabels({ tripDays: 3 });
+    expect(labels).toContain('Shampoo & conditioner');
+    expect(labels).toContain('Moisturiser');
+    expect(labels).toContain('Razor');
   });
 
   it('does not add shampoo for 1-day trips', () => {
-    const { toiletries } = generatePackingList([], defaultContext({ tripDays: 1 }));
-    expect(toiletries).not.toContain('Shampoo & conditioner');
+    const labels = toiletryLabels({ tripDays: 1 });
+    expect(labels).not.toContain('Shampoo & conditioner');
   });
 
   it('adds laundry pods and nail clippers for 7+ day trips', () => {
-    const { toiletries } = generatePackingList([], defaultContext({ tripDays: 7 }));
-    expect(toiletries).toContain('Laundry detergent pods');
-    expect(toiletries).toContain('Nail clippers');
+    const labels = toiletryLabels({ tripDays: 7 });
+    expect(labels).toContain('Laundry detergent pods');
+    expect(labels).toContain('Nail clippers');
   });
 
   it('adds sunscreen and after-sun for hot trips (avgTemp > 21)', () => {
-    const { toiletries } = generatePackingList([], defaultContext({ avgTemp: 30 }));
-    expect(toiletries).toContain('Sunscreen (SPF 50+)');
-    expect(toiletries).toContain('After-sun lotion');
+    const labels = toiletryLabels({ avgTemp: 30 });
+    expect(labels).toContain('Sunscreen (SPF 50+)');
+    expect(labels).toContain('After-sun lotion');
   });
 
   it('adds sunscreen for beach trips regardless of temperature', () => {
-    const { toiletries } = generatePackingList([], defaultContext({ avgTemp: 15, activities: ['beach'] }));
-    expect(toiletries).toContain('Sunscreen (SPF 50+)');
+    const labels = toiletryLabels({ avgTemp: 15, activities: ['beach'] });
+    expect(labels).toContain('Sunscreen (SPF 50+)');
   });
 
   it('adds lip balm and hand cream for cold trips (avgTemp < 10)', () => {
-    const { toiletries } = generatePackingList([], defaultContext({ avgTemp: 5 }));
-    expect(toiletries).toContain('Lip balm');
-    expect(toiletries).toContain('Hand cream');
+    const labels = toiletryLabels({ avgTemp: 5 });
+    expect(labels).toContain('Lip balm');
+    expect(labels).toContain('Hand cream');
   });
 
   it('adds lip balm only (no hand cream) for mild trips', () => {
-    const { toiletries } = generatePackingList([], defaultContext({ avgTemp: 15 }));
-    expect(toiletries).toContain('Lip balm');
-    expect(toiletries).not.toContain('Hand cream');
+    const labels = toiletryLabels({ avgTemp: 15 });
+    expect(labels).toContain('Lip balm');
+    expect(labels).not.toContain('Hand cream');
   });
 
   it('adds umbrella for rainy trips (rainRisk > 40)', () => {
-    const { toiletries } = generatePackingList([], defaultContext({ rainRisk: 60 }));
-    expect(toiletries).toContain('Compact umbrella / rain poncho');
+    const labels = toiletryLabels({ rainRisk: 60 });
+    expect(labels).toContain('Compact umbrella / rain poncho');
   });
 
   it('adds blister care and hand sanitizer for hiking trips', () => {
-    const { toiletries } = generatePackingList([], defaultContext({ activities: ['hiking'] }));
-    expect(toiletries).toContain('Blister care (plasters)');
-    expect(toiletries).toContain('Hand sanitizer');
+    const labels = toiletryLabels({ activities: ['hiking'] });
+    expect(labels).toContain('Blister care (plasters)');
+    expect(labels).toContain('Hand sanitizer');
   });
 
   it('adds waterproof bag for beach trips', () => {
-    const { toiletries } = generatePackingList([], defaultContext({ activities: ['beach'] }));
-    expect(toiletries).toContain('Waterproof bag (for wet swimwear)');
+    const labels = toiletryLabels({ activities: ['beach'] });
+    expect(labels).toContain('Waterproof bag (for wet swimwear)');
   });
 
   it('deduplicates items added by multiple rules', () => {
     // cold + skiing both add lip balm — should appear only once
-    const { toiletries } = generatePackingList([], defaultContext({ avgTemp: 5, activities: ['skiing'] }));
-    const lipBalmCount = toiletries.filter((t) => t === 'Lip balm').length;
+    const labels = toiletryLabels({ avgTemp: 5, activities: ['skiing'] });
+    const lipBalmCount = labels.filter((t) => t === 'Lip balm').length;
     expect(lipBalmCount).toBe(1);
   });
 
@@ -260,7 +265,72 @@ describe('toiletries', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Full pipeline integration
+// 4. Priority tiers
+// ---------------------------------------------------------------------------
+
+describe('priority tiers', () => {
+  it('marks tops, bottoms, and footwear as essential', () => {
+    const top    = makeItem('top-1',  { category: 'tops' });
+    const bottom = makeItem('btm-1',  { category: 'bottoms' });
+    const shoe   = makeItem('shoe-1', { category: 'footwear' });
+
+    const { clothing } = generatePackingList([makeOutfit('2026-04-01', [top, bottom, shoe])], defaultContext());
+
+    expect(clothing.find((e) => e.itemId === 'top-1')?.priority).toBe('essential');
+    expect(clothing.find((e) => e.itemId === 'btm-1')?.priority).toBe('essential');
+    expect(clothing.find((e) => e.itemId === 'shoe-1')?.priority).toBe('essential');
+  });
+
+  it('marks outerwear as recommended', () => {
+    const jacket = makeItem('jacket-1', { category: 'outerwear' });
+    const { clothing } = generatePackingList([makeOutfit('2026-04-01', [jacket])], defaultContext());
+
+    expect(clothing.find((e) => e.itemId === 'jacket-1')?.priority).toBe('recommended');
+  });
+
+  it('marks dresses and activewear as optional', () => {
+    const dress = makeItem('dress-1', { category: 'dresses' });
+    const active = makeItem('active-1', { category: 'activewear' });
+
+    const { clothing } = generatePackingList([makeOutfit('2026-04-01', [dress, active])], defaultContext());
+
+    expect(clothing.find((e) => e.itemId === 'dress-1')?.priority).toBe('optional');
+    expect(clothing.find((e) => e.itemId === 'active-1')?.priority).toBe('optional');
+  });
+
+  it('marks core toiletries as essential', () => {
+    const { toiletries } = generatePackingList([], defaultContext());
+
+    const toothbrush = toiletries.find((t) => t.label === 'Toothbrush & toothpaste');
+    const deodorant  = toiletries.find((t) => t.label === 'Deodorant');
+    expect(toothbrush?.priority).toBe('essential');
+    expect(deodorant?.priority).toBe('essential');
+  });
+
+  it('marks climate-specific toiletries as recommended', () => {
+    const { toiletries } = generatePackingList([], defaultContext({ avgTemp: 30 }));
+
+    const sunscreen = toiletries.find((t) => t.label === 'Sunscreen (SPF 50+)');
+    expect(sunscreen?.priority).toBe('recommended');
+  });
+
+  it('marks lip balm as optional in mild weather', () => {
+    const { toiletries } = generatePackingList([], defaultContext({ avgTemp: 15 }));
+
+    const lipBalm = toiletries.find((t) => t.label === 'Lip balm');
+    expect(lipBalm?.priority).toBe('optional');
+  });
+
+  it('marks lip balm as recommended in cold weather', () => {
+    const { toiletries } = generatePackingList([], defaultContext({ avgTemp: 5 }));
+
+    const lipBalm = toiletries.find((t) => t.label === 'Lip balm');
+    expect(lipBalm?.priority).toBe('recommended');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Full pipeline integration
 // ---------------------------------------------------------------------------
 
 describe('full packing list', () => {
@@ -276,8 +346,8 @@ describe('full packing list', () => {
     const { clothing, accessories, toiletries } = generatePackingList(outfits, defaultContext());
 
     expect(clothing).toHaveLength(1);
-    expect(clothing[0]).toEqual({ itemId: 'top-1', count: 2 });
+    expect(clothing[0]).toEqual({ itemId: 'top-1', count: 2, priority: 'essential' });
     expect(accessories).toEqual(['Black belt']);
-    expect(toiletries).toContain('Toothbrush & toothpaste');
+    expect(toiletries.map((t) => t.label)).toContain('Toothbrush & toothpaste');
   });
 });

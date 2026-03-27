@@ -60,6 +60,6 @@ export default async function handler(
     return res.status(200).json({ imageData: result.imageData });
   } catch (err) {
     console.error('[generate-packing-image]', err);
-    return res.status(500).json({ error: (err as Error).message });
+    return res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to generate image' });
   }
 }

@@ -1,21 +1,16 @@
-import type { ISODate, ISODateTime } from './shared.types';
+// Global re-exports for Trip-related types.
+//
+// Canonical definitions live in src/features/trips/types/trip.ts — this file
+// re-exports so that consumers importing from 'src/types' get the up-to-date
+// shapes without directly coupling to the feature module.
+
+import type { ISODate } from './shared.types';
 import type { ClosetItem } from './wardrobe.types';
-// WeatherForecast is defined in the features/trips module (source of truth) and
-// re-exported here so global-types consumers get the canonical shape.
-export type { WeatherForecast } from '../features/trips/types/trip';
 import type { WeatherForecast } from '../features/trips/types/trip';
 
-// Preset values used for formality matching and AI parsing.
-// Widened to string so users can add custom activities.
-export type TripActivity = string;
-
-export type TripVibe =
-  | 'relaxed'
-  | 'adventurous'
-  | 'formal'
-  | 'romantic'
-  | 'family'
-  | 'backpacker';
+// Re-export everything from the canonical source
+export type { WeatherForecast, Trip, LuggageSize } from '../features/trips/types/trip';
+export type { TripActivity, TripVibe } from '../features/trips/types/trip';
 
 export type WeatherCondition =
   | 'sunny'
@@ -27,22 +22,10 @@ export type WeatherCondition =
   | 'foggy'
   | 'partly-cloudy';
 
-export interface Trip {
-  id: string;
-  userId: string;
-  destination: string;
-  startDate: ISODate;
-  endDate: ISODate;
-  activities: TripActivity[];
-  vibe: TripVibe;
-  weatherForecast: WeatherForecast[];
-  createdAt: ISODateTime;
-}
-
 export interface DailyOutfit {
   date: ISODate;
   items: ClosetItem[];
-  activity: TripActivity;
+  activity: string;
   weatherContext: WeatherForecast;
   /** Non-empty when a required category (top/bottom/footwear) could not be filled. */
   warnings: string[];

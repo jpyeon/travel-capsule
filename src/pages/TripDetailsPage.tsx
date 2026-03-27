@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../hooks/useTrip';
 import { useCloset } from '../hooks/useCloset';
 import { useCapsuleWardrobe } from '../hooks/useCapsuleWardrobe';
-import type { Trip, UpdateTripInput } from '../features/trips/types/trip';
+import type { Trip, UpdateTripInput, LuggageSize } from '../features/trips/types/trip';
 import type { ClosetItem, DailyOutfit } from '../types';
 import type { CapsuleWardrobe } from '../features/capsule';
 import type { TripActivity, TripVibe } from '../types';
@@ -20,6 +20,7 @@ import { TagInput } from '../components/shared/TagInput';
 import { outfitKey } from '../hooks/useOutfitVisualization';
 import { formatDateShort, formatDateLong } from '../utils/date.utils';
 import { usePackingVisualization } from '../hooks/usePackingVisualization';
+import { useTravelInfo } from '../hooks/useTravelInfo';
 import type { PackingList } from '../features/packing';
 
 // ---------------------------------------------------------------------------
@@ -38,21 +39,31 @@ const ALL_VIBES: TripVibe[] = [
 // Edit form state
 // ---------------------------------------------------------------------------
 
+const LUGGAGE_OPTIONS: { value: LuggageSize; label: string }[] = [
+  { value: 'backpack',  label: 'Backpack' },
+  { value: 'carry-on',  label: 'Carry-on' },
+  { value: 'checked',   label: 'Checked' },
+];
+
 interface EditFormState {
   destination: string;
   startDate: string;
   endDate: string;
   activities: TripActivity[];
   vibe: TripVibe;
+  luggageSize: LuggageSize;
+  hasLaundryAccess: boolean;
 }
 
 function tripToEditForm(trip: Trip): EditFormState {
   return {
-    destination: trip.destination,
-    startDate:   trip.startDate,
-    endDate:     trip.endDate,
-    activities:  trip.activities,
-    vibe:        trip.vibe,
+    destination:      trip.destination,
+    startDate:        trip.startDate,
+    endDate:          trip.endDate,
+    activities:       trip.activities,
+    vibe:             trip.vibe,
+    luggageSize:      trip.luggageSize,
+    hasLaundryAccess: trip.hasLaundryAccess,
   };
 }
 
@@ -103,11 +114,13 @@ const TripDetailsPage: NextPage = () => {
     setEditSubmitting(true);
     try {
       const input: UpdateTripInput = {
-        destination: editForm.destination,
-        startDate:   editForm.startDate,
-        endDate:     editForm.endDate,
-        activities:  editForm.activities,
-        vibe:        editForm.vibe,
+        destination:      editForm.destination,
+        startDate:        editForm.startDate,
+        endDate:          editForm.endDate,
+        activities:       editForm.activities,
+        vibe:             editForm.vibe,
+        luggageSize:      editForm.luggageSize,
+        hasLaundryAccess: editForm.hasLaundryAccess,
       };
       await updateTrip(tripId, input);
       closeEdit();
@@ -190,6 +203,14 @@ const TripDetailsPage: NextPage = () => {
             <span className="rounded-full border border-sand-200 bg-sand-50 px-2.5 py-0.5 text-xs font-medium text-gray-600 capitalize">
               {trip.vibe}
             </span>
+            <span className="rounded-full border border-sand-200 bg-sand-50 px-2.5 py-0.5 text-xs font-medium text-gray-600 capitalize">
+              {trip.luggageSize}
+            </span>
+            {trip.hasLaundryAccess && (
+              <span className="rounded-full border border-sand-200 bg-sand-50 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                laundry access
+              </span>
+            )}
             {trip.weatherForecast.length > 0 && (
               <span className="text-xs text-sand-400">
                 {Math.round(
@@ -273,6 +294,48 @@ const TripDetailsPage: NextPage = () => {
               />
             </Field>
 
+            <Field label="Luggage">
+              <div className="flex gap-2 pt-1">
+                {LUGGAGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setEditForm((p) => p && ({ ...p, luggageSize: opt.value }))}
+                    className={[
+                      'flex-1 rounded-lg border px-3 py-2 text-sm transition-colors',
+                      editForm.luggageSize === opt.value
+                        ? 'border-accent-400 bg-accent-50 text-accent-700 font-medium'
+                        : 'border-sand-200 bg-white text-gray-600 hover:border-sand-300',
+                    ].join(' ')}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </Field>
+
+            <Field label="Laundry access">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div
+                  role="switch"
+                  aria-checked={editForm.hasLaundryAccess}
+                  onClick={() => setEditForm((p) => p && ({ ...p, hasLaundryAccess: !p.hasLaundryAccess }))}
+                  className={[
+                    'relative h-6 w-11 rounded-full transition-colors cursor-pointer',
+                    editForm.hasLaundryAccess ? 'bg-accent-500' : 'bg-sand-300',
+                  ].join(' ')}
+                >
+                  <span className={[
+                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
+                    editForm.hasLaundryAccess ? 'translate-x-5' : 'translate-x-0.5',
+                  ].join(' ')} />
+                </div>
+                <span className="text-sm text-gray-600">
+                  {editForm.hasLaundryAccess ? 'Yes — I can do laundry' : 'No — packing for full trip'}
+                </span>
+              </label>
+            </Field>
+
             {editError && <p className="text-sm text-red-600">{editError}</p>}
 
             <div className="flex justify-end gap-2 pt-2">
@@ -309,6 +372,8 @@ function CapsuleSection({
     packingVisualizationUrl, outfitVisualizationUrls,
     generate, togglePacked, savePackingVisualizationUrl, saveOutfitVisualizationUrl, reset,
   } = useCapsuleWardrobe(trip, closetItems, userId);
+
+  const travelInfo = useTravelInfo(trip);
 
   if (loading) {
     return (
@@ -362,6 +427,8 @@ function CapsuleSection({
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <TravelInfoSection travelInfo={travelInfo} destination={trip.destination} />
 
       {capsule && (
         <>
@@ -576,6 +643,90 @@ function PackingVisualizationSection({
       {!imageData && !generating && !error && (
         <p className="text-sm text-sand-400">
           Generate a visual preview of your packed suitcase.
+        </p>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Travel info
+// ---------------------------------------------------------------------------
+
+function TravelInfoSection({
+  travelInfo,
+  destination,
+}: {
+  travelInfo: ReturnType<typeof useTravelInfo>;
+  destination: string;
+}) {
+  const { info, loading, error, fetch } = travelInfo;
+
+  return (
+    <section className="rounded-xl border border-sand-200 bg-white shadow-card overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-sand-100">
+        <h2 className="text-base font-bold text-gray-900">Travel info</h2>
+        <Button
+          variant="secondary"
+          onClick={fetch}
+          loading={loading}
+          disabled={loading}
+          className="text-xs px-3 py-1.5"
+        >
+          {info ? 'Refresh' : `Tips for ${destination}`}
+        </Button>
+      </div>
+
+      {error && <p className="px-5 py-4 text-sm text-red-500">{error}</p>}
+
+      {loading && !info && (
+        <div className="space-y-2 px-5 py-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-4 animate-pulse rounded bg-sand-100" style={{ width: `${60 + i * 10}%` }} />
+          ))}
+        </div>
+      )}
+
+      {info && (
+        <div className="grid gap-0 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-sand-100">
+          {/* What not to bring */}
+          <div className="px-5 py-4">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-sand-400">
+              Don&apos;t bother packing
+            </h3>
+            <ul className="space-y-2">
+              {info.savings.map((tip, i) => (
+                <li key={i} className="flex gap-2 text-sm text-gray-700">
+                  <span className="mt-0.5 text-green-500 flex-shrink-0">✓</span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Considerations */}
+          <div className="px-5 py-4">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-sand-400">
+              Things to consider
+            </h3>
+            <ul className="space-y-2">
+              {info.considerations.map((tip, i) => (
+                <li key={i} className="flex gap-2 text-sm text-gray-700">
+                  <span className="mt-0.5 text-amber-400 flex-shrink-0">!</span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-xs text-sand-400">
+              AI-generated — verify all requirements before travel.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!info && !loading && !error && (
+        <p className="px-5 py-4 text-sm text-sand-400">
+          Get destination-specific tips: what to buy locally, visa reminders, cultural notes.
         </p>
       )}
     </section>

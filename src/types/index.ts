@@ -7,6 +7,7 @@ export type {
   WeatherCondition,
   WeatherForecast,
   Trip,
+  LuggageSize,
   DailyOutfit,
   TripDay,
 } from './trip.types';

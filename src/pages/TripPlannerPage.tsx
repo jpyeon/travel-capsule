@@ -15,7 +15,7 @@ import { StepForm } from '../components/shared/StepForm';
 import { Button } from '../components/shared/Button';
 import { FormField as Field, INPUT_CLS } from '../components/shared/FormField';
 import { TagInput } from '../components/shared/TagInput';
-import type { CreateTripInput } from '../features/trips/types/trip';
+import type { CreateTripInput, LuggageSize } from '../features/trips/types/trip';
 import type { TripActivity, TripVibe } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -30,6 +30,12 @@ const ALL_VIBES: TripVibe[] = [
   'relaxed', 'adventurous', 'formal', 'romantic', 'family', 'backpacker',
 ];
 
+const LUGGAGE_OPTIONS: { value: LuggageSize; label: string; description: string }[] = [
+  { value: 'backpack',  label: 'Backpack',  description: 'Up to 6 items' },
+  { value: 'carry-on',  label: 'Carry-on',  description: 'Up to 10 items' },
+  { value: 'checked',   label: 'Checked',   description: 'Up to 14 items' },
+];
+
 // ---------------------------------------------------------------------------
 // Form state
 // ---------------------------------------------------------------------------
@@ -42,6 +48,8 @@ interface TripFormState {
   vibe: TripVibe;
   latitude: string;
   longitude: string;
+  luggageSize: LuggageSize;
+  hasLaundryAccess: boolean;
 }
 
 const EMPTY_FORM: TripFormState = {
@@ -52,6 +60,8 @@ const EMPTY_FORM: TripFormState = {
   vibe: 'relaxed',
   latitude: '',
   longitude: '',
+  luggageSize: 'carry-on',
+  hasLaundryAccess: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -187,13 +197,15 @@ const TripPlannerPage: NextPage = () => {
         throw new Error('Location not resolved — tab off the destination field or enter coordinates manually.');
       }
       const input: CreateTripInput = {
-        destination: form.destination,
-        startDate:   form.startDate,
-        endDate:     form.endDate,
-        activities:  form.activities,
-        vibe:        form.vibe,
-        latitude:    lat,
-        longitude:   lng,
+        destination:      form.destination,
+        startDate:        form.startDate,
+        endDate:          form.endDate,
+        activities:       form.activities,
+        vibe:             form.vibe,
+        latitude:         lat,
+        longitude:        lng,
+        luggageSize:      form.luggageSize,
+        hasLaundryAccess: form.hasLaundryAccess,
       };
       const trip = await createTrip(input);
       void router.push(`/TripDetailsPage?tripId=${trip.id}`);
@@ -372,6 +384,49 @@ const TripPlannerPage: NextPage = () => {
                 <option key={v} value={v} className="capitalize">{v}</option>
               ))}
             </select>
+          </Field>
+
+          <Field label="Luggage">
+            <div className="flex gap-2 pt-1">
+              {LUGGAGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, luggageSize: opt.value }))}
+                  className={[
+                    'flex-1 rounded-lg border px-3 py-2 text-left transition-colors',
+                    form.luggageSize === opt.value
+                      ? 'border-accent-400 bg-accent-50 text-accent-700'
+                      : 'border-sand-200 bg-white text-gray-600 hover:border-sand-300',
+                  ].join(' ')}
+                >
+                  <p className="text-sm font-medium">{opt.label}</p>
+                  <p className="text-xs text-sand-400">{opt.description}</p>
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Laundry access">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div
+                role="switch"
+                aria-checked={form.hasLaundryAccess}
+                onClick={() => setForm((p) => ({ ...p, hasLaundryAccess: !p.hasLaundryAccess }))}
+                className={[
+                  'relative h-6 w-11 rounded-full transition-colors cursor-pointer',
+                  form.hasLaundryAccess ? 'bg-accent-500' : 'bg-sand-300',
+                ].join(' ')}
+              >
+                <span className={[
+                  'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
+                  form.hasLaundryAccess ? 'translate-x-5' : 'translate-x-0.5',
+                ].join(' ')} />
+              </div>
+              <span className="text-sm text-gray-600">
+                {form.hasLaundryAccess ? 'Yes — I can do laundry' : 'No — I need to pack for the full trip'}
+              </span>
+            </label>
           </Field>
         </div>
       ),
