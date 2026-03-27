@@ -17,6 +17,8 @@ import { FormField as Field, INPUT_CLS } from '../components/shared/FormField';
 import { OutfitCard } from '../components/trip/OutfitCard';
 import { PackingCard } from '../components/trip/PackingCard';
 import { formatDateShort, formatDateLong } from '../utils/date.utils';
+import { usePackingVisualization } from '../hooks/usePackingVisualization';
+import type { PackingList } from '../features/packing';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -381,13 +383,26 @@ function CapsuleSection({
       {capsule && (
         <>
           <CapsuleItemsSection capsule={capsule} />
-          <DailyOutfitsSection outfits={outfits} capsule={capsule} />
+          <DailyOutfitsSection
+            outfits={outfits}
+            capsule={capsule}
+            destination={trip.destination}
+            vibe={trip.vibe}
+          />
           {packingList && (
             <PackingCard
               packingList={packingList}
               capsule={capsule}
               packedItems={packedItems}
               onToggle={togglePacked}
+            />
+          )}
+          {packingList && (
+            <PackingVisualizationSection
+              packingList={packingList}
+              capsule={capsule}
+              destination={trip.destination}
+              vibe={trip.vibe}
             />
           )}
         </>
@@ -455,9 +470,13 @@ function CapsuleItemsSection({ capsule }: { capsule: CapsuleWardrobe }) {
 function DailyOutfitsSection({
   outfits,
   capsule,
+  destination,
+  vibe,
 }: {
   outfits: DailyOutfit[];
   capsule: CapsuleWardrobe;
+  destination: string;
+  vibe: string;
 }) {
   if (outfits.length === 0) return null;
 
@@ -485,7 +504,13 @@ function DailyOutfitsSection({
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {dayOutfits.map((outfit, i) => (
-                <OutfitCard key={i} outfit={outfit} itemById={itemById} />
+                <OutfitCard
+                  key={i}
+                  outfit={outfit}
+                  itemById={itemById}
+                  destination={destination}
+                  vibe={vibe}
+                />
               ))}
             </div>
           </div>
@@ -495,4 +520,65 @@ function DailyOutfitsSection({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Packing visualization
+// ---------------------------------------------------------------------------
 
+function PackingVisualizationSection({
+  packingList,
+  capsule,
+  destination,
+  vibe,
+}: {
+  packingList: PackingList;
+  capsule: CapsuleWardrobe;
+  destination: string;
+  vibe: string;
+}) {
+  const { imageData, generating, error, generate } = usePackingVisualization(
+    packingList,
+    capsule,
+    destination,
+    vibe,
+  );
+
+  return (
+    <section>
+      <div className="mb-4 flex items-center gap-3">
+        <h2 className="text-base font-bold text-gray-900">Packing visualization</h2>
+        <Button
+          variant={imageData ? 'secondary' : 'primary'}
+          onClick={generate}
+          loading={generating}
+          disabled={generating}
+        >
+          {imageData ? 'Regenerate' : 'Visualize packing'}
+        </Button>
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600">{error}</p>
+      )}
+
+      {generating && !imageData && (
+        <div className="h-72 w-full animate-pulse rounded-xl bg-sand-100" />
+      )}
+
+      {imageData && (
+        <div className="overflow-hidden rounded-xl border border-sand-200 shadow-card">
+          <img
+            src={imageData}
+            alt={`Packing visualization for ${destination}`}
+            className="w-full object-cover"
+          />
+        </div>
+      )}
+
+      {!imageData && !generating && !error && (
+        <p className="text-sm text-sand-400">
+          Generate a visual preview of your packed suitcase.
+        </p>
+      )}
+    </section>
+  );
+}
