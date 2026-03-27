@@ -1,7 +1,7 @@
 // Manages the packing visualization state and API call.
 //
 // Does not auto-run — the user triggers generate() explicitly.
-// Image is kept in local state only (not persisted to DB in this version).
+// Persists generated images via the onSave callback (fire-and-forget to DB).
 
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
@@ -28,12 +28,13 @@ export function usePackingVisualization(
   capsule: CapsuleWardrobe | null,
   destination: string,
   vibe: string,
+  initialUrl: string | null,
+  onSave: (url: string) => void,
 ): UsePackingVisualizationReturn {
-  const [imageData, setImageData] = useState<string | null>(null);
+  const [imageData, setImageData] = useState<string | null>(initialUrl);
   const [generating, setGenerating] = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
-  // Prevent duplicate concurrent calls
   const generatingRef = useRef(false);
 
   const generate = useCallback(async () => {
@@ -45,7 +46,6 @@ export function usePackingVisualization(
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Map item IDs in the packing list back to human-readable names
       const itemById = new Map(capsule.items.map((i) => [i.id, i]));
       const clothingItems = packingList.clothing
         .map((entry) => itemById.get(entry.itemId)?.name)
@@ -69,14 +69,18 @@ export function usePackingVisualization(
       const data = await res.json() as { imageData?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to generate image');
 
-      setImageData(data.imageData ?? null);
+      const url = data.imageData ?? null;
+      if (url) {
+        setImageData(url);
+        onSave(url);
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
       generatingRef.current = false;
       setGenerating(false);
     }
-  }, [packingList, capsule, destination, vibe]);
+  }, [packingList, capsule, destination, vibe, onSave]);
 
   return { imageData, generating, error, generate };
 }

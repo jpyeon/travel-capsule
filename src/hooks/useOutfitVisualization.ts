@@ -2,7 +2,7 @@
 //
 // One instance per OutfitCard — each card manages its own image independently.
 // Manual trigger only — never auto-generates on mount.
-// Image is kept in local state (not persisted in this version).
+// Persists generated images via the onSave callback (fire-and-forget to DB).
 
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
@@ -22,6 +22,14 @@ export interface UseOutfitVisualizationReturn {
 }
 
 // ---------------------------------------------------------------------------
+// Outfit key — stable identifier for a specific outfit slot
+// ---------------------------------------------------------------------------
+
+export function outfitKey(date: string, activity: string): string {
+  return `${date}::${activity}`;
+}
+
+// ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
@@ -30,8 +38,10 @@ export function useOutfitVisualization(
   itemById: Map<string, ClosetItem>,
   destination: string,
   vibe: string,
+  initialUrl: string | null,
+  onSave: (key: string, url: string) => void,
 ): UseOutfitVisualizationReturn {
-  const [imageData, setImageData] = useState<string | null>(null);
+  const [imageData, setImageData] = useState<string | null>(initialUrl);
   const [generating, setGenerating] = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
@@ -83,14 +93,18 @@ export function useOutfitVisualization(
       const data = await res.json() as { imageData?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to generate image');
 
-      setImageData(data.imageData ?? null);
+      const url = data.imageData ?? null;
+      if (url) {
+        setImageData(url);
+        onSave(outfitKey(outfit.date, outfit.activity), url);
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
       generatingRef.current = false;
       setGenerating(false);
     }
-  }, [outfit, itemById, destination, vibe]);
+  }, [outfit, itemById, destination, vibe, onSave]);
 
   return { imageData, generating, error, generate };
 }
@@ -102,9 +116,7 @@ export function useOutfitVisualization(
 function describeWeather(forecast: WeatherForecast): string {
   const temp = forecast.temperatureHigh;
   const rain = forecast.rainProbability;
-
   const tempDesc = temp >= 25 ? 'hot' : temp >= 18 ? 'warm' : temp >= 10 ? 'mild' : 'cold';
   const rainDesc = rain >= 60 ? 'rainy' : rain >= 30 ? 'chance of rain' : 'dry';
-
   return `${tempDesc}, ${temp}°C, ${rainDesc}`;
 }

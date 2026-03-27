@@ -223,6 +223,7 @@ function formalityMatchBonus(itemFormality: FormalityLevel, target: 'low' | 'mid
 function activityBonusForItem(item: ClosetItem, activities: TripActivity[]): number {
   return Math.max(0, ...activities.map((activity) => {
     const pref = ACTIVITY_PREFERENCES[activity];
+    if (!pref) return 0; // custom activity — no preference defined, no bonus
     const categoryMatch = pref.categories.includes(item.category) ? 0.2 : 0;
     const formalityMatch = formalityMatchBonus(item.formalityScore, pref.formality);
     return categoryMatch + formalityMatch;

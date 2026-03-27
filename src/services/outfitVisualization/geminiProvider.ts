@@ -12,6 +12,7 @@ import type {
   OutfitVisualizationResult,
   OutfitVisualizationProvider,
 } from './types';
+import { extractGeminiImage } from '../geminiImageUtils';
 
 function buildPrompt(input: OutfitVisualizationInput): string {
   const itemLines = input.items
@@ -54,15 +55,6 @@ export class GeminiOutfitProvider implements OutfitVisualizationProvider {
       } as unknown as GenerationConfig,
     });
 
-    const parts = result.response.candidates?.[0]?.content?.parts ?? [];
-
-    for (const part of parts) {
-      const inlineData = (part as { inlineData?: { mimeType: string; data: string } }).inlineData;
-      if (inlineData?.data) {
-        return { imageData: `data:${inlineData.mimeType};base64,${inlineData.data}` };
-      }
-    }
-
-    throw new Error('Gemini returned no image data. Try regenerating.');
+    return { imageData: extractGeminiImage(result) };
   }
 }

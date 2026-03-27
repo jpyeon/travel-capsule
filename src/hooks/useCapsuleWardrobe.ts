@@ -43,9 +43,17 @@ export interface UseCapsuleWardrobeReturn {
   error: string | null;
   /** ISO timestamp of when the current capsule was generated (null if none). */
   savedAt: string | null;
+  /** Persisted packing visualization image URL (null if not yet generated). */
+  packingVisualizationUrl: string | null;
+  /** Map of outfitKey ("date::activity") → persisted image URL. */
+  outfitVisualizationUrls: Record<string, string>;
   generate: () => void;
   /** Toggle a packing list item checked/unchecked. Optimistic — fires DB call async. */
   togglePacked: (key: string) => void;
+  /** Persist a newly generated packing visualization URL. Fire-and-forget. */
+  savePackingVisualizationUrl: (url: string) => void;
+  /** Persist a newly generated outfit visualization URL. Fire-and-forget. */
+  saveOutfitVisualizationUrl: (outfitKey: string, url: string) => void;
   reset: () => void;
 }
 
@@ -66,6 +74,8 @@ export function useCapsuleWardrobe(
   const [generating, setGenerating]   = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [savedAt, setSavedAt]         = useState<string | null>(null);
+  const [packingVisualizationUrl, setPackingVisualizationUrl] = useState<string | null>(null);
+  const [outfitVisualizationUrls, setOutfitVisualizationUrls] = useState<Record<string, string>>({});
 
   const [repo] = useState(() => new CapsuleRepository(supabase));
   const generatingRef = useRef(false);
@@ -83,6 +93,8 @@ export function useCapsuleWardrobe(
       setPackingList(null);
       setPackedItems(new Set());
       setSavedAt(null);
+      setPackingVisualizationUrl(null);
+      setOutfitVisualizationUrls({});
 
       try {
         const saved = await repo.findByTripId(trip.id);
@@ -92,6 +104,8 @@ export function useCapsuleWardrobe(
           setPackingList(saved.packingList);
           setPackedItems(new Set(saved.packedItems));
           setSavedAt(saved.generatedAt);
+          setPackingVisualizationUrl(saved.packingVisualizationUrl);
+          setOutfitVisualizationUrls(saved.outfitVisualizationUrls);
         }
       } catch (err) {
         if (!cancelled) setError((err as Error).message);
@@ -141,7 +155,9 @@ export function useCapsuleWardrobe(
         outfits: generatedOutfits,
         packingList: generatedPackingList,
         generatedAt,
-        packedItems: [], // reset on regenerate
+        packedItems: [],             // reset on regenerate
+        packingVisualizationUrl: null,  // reset on regenerate
+        outfitVisualizationUrls: {},    // reset on regenerate
       });
 
       setCapsule(generatedCapsule);
@@ -175,19 +191,32 @@ export function useCapsuleWardrobe(
     });
   }, [repo, trip.id]);
 
+  const savePackingVisualizationUrl = useCallback((url: string) => {
+    setPackingVisualizationUrl(url);
+    void repo.updatePackingVisualizationUrl(trip.id, url);
+  }, [repo, trip.id]);
+
+  const saveOutfitVisualizationUrl = useCallback((outfitKey: string, url: string) => {
+    setOutfitVisualizationUrls((prev) => ({ ...prev, [outfitKey]: url }));
+    void repo.updateOutfitVisualizationUrl(trip.id, outfitKey, url);
+  }, [repo, trip.id]);
+
   const reset = useCallback(() => {
     setCapsule(null);
     setOutfits([]);
     setPackingList(null);
     setPackedItems(new Set());
     setSavedAt(null);
+    setPackingVisualizationUrl(null);
+    setOutfitVisualizationUrls({});
     setError(null);
   }, []);
 
   return {
     capsule, outfits, packingList, packedItems,
     loading, generating, error, savedAt,
-    generate, togglePacked, reset,
+    packingVisualizationUrl, outfitVisualizationUrls,
+    generate, togglePacked, savePackingVisualizationUrl, saveOutfitVisualizationUrl, reset,
   };
 }
 

@@ -7,6 +7,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getAuthUser } from '../../../lib/apiAuth';
 
+function stripJsonFences(text: string): string {
+  return text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+}
+
 export interface SuggestTagsResponse {
   tags: string[];
 }
@@ -57,9 +61,9 @@ Rules:
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const text = stripJsonFences(result.response.text());
 
     const tags = (JSON.parse(text) as unknown[])
       .filter((t): t is string => typeof t === 'string')
@@ -67,7 +71,6 @@ Rules:
 
     return res.status(200).json({ tags });
   } catch (err) {
-    console.error('[suggest-tags]', err);
-    return res.status(500).json({ error: 'Failed to suggest tags' });
+    return res.status(500).json({ error: (err as Error).message ?? 'Failed to suggest tags' });
   }
 }

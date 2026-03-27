@@ -4,7 +4,7 @@
 // Step 3: Activities + Vibe
 // On submit: createTrip → redirect to TripDetailsPage
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
@@ -14,6 +14,7 @@ import { searchDestination, type GeocodingResult } from '../services/geocoding/g
 import { StepForm } from '../components/shared/StepForm';
 import { Button } from '../components/shared/Button';
 import { FormField as Field, INPUT_CLS } from '../components/shared/FormField';
+import { TagInput } from '../components/shared/TagInput';
 import type { CreateTripInput } from '../features/trips/types/trip';
 import type { TripActivity, TripVibe } from '../types';
 
@@ -72,6 +73,7 @@ const TripPlannerPage: NextPage = () => {
   const [geocoding, setGeocoding]                     = useState(false);
   const [geocodingError, setGeocodingError]           = useState<string | null>(null);
   const [showManualCoords, setShowManualCoords]       = useState(false);
+  const geocodeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // AI description parsing
   const [description, setDescription] = useState('');
@@ -103,31 +105,45 @@ const TripPlannerPage: NextPage = () => {
     }));
   }
 
-  async function handleDestinationBlur() {
-    const query = form.destination.trim();
-    if (!query || resolvedLocation) return;
+  function handleDestinationChange(value: string) {
+    setForm((p) => ({ ...p, destination: value, latitude: '', longitude: '' }));
+    if (resolvedLocation) resetGeocoding();
 
-    setGeocoding(true);
-    setGeocodingError(null);
-    setGeocodingCandidates([]);
+    if (geocodeDebounceRef.current) clearTimeout(geocodeDebounceRef.current);
 
-    try {
-      const results = await searchDestination(query);
-      if (results.length === 0) {
-        setGeocodingError('Location not found.');
-        setShowManualCoords(true);
-      } else if (results.length === 1) {
-        selectLocation(results[0]);
-      } else {
-        setGeocodingCandidates(results);
-      }
-    } catch {
-      setGeocodingError('Could not search location.');
-      setShowManualCoords(true);
-    } finally {
-      setGeocoding(false);
+    const query = value.trim();
+    if (query.length < 2) {
+      setGeocodingCandidates([]);
+      setGeocodingError(null);
+      return;
     }
+
+    geocodeDebounceRef.current = setTimeout(async () => {
+      setGeocoding(true);
+      setGeocodingError(null);
+      setGeocodingCandidates([]);
+      try {
+        const results = await searchDestination(query);
+        if (results.length === 0) {
+          setGeocodingError('Location not found.');
+          setShowManualCoords(true);
+        } else if (results.length === 1) {
+          selectLocation(results[0]);
+        } else {
+          setGeocodingCandidates(results);
+        }
+      } catch {
+        setGeocodingError('Could not search location.');
+        setShowManualCoords(true);
+      } finally {
+        setGeocoding(false);
+      }
+    }, 350);
   }
+
+  useEffect(() => () => {
+    if (geocodeDebounceRef.current) clearTimeout(geocodeDebounceRef.current);
+  }, []);
 
   // --- AI parse ---
 
@@ -157,15 +173,6 @@ const TripPlannerPage: NextPage = () => {
     } finally {
       setParsing(false);
     }
-  }
-
-  function toggleActivity(activity: TripActivity) {
-    setForm((prev) => ({
-      ...prev,
-      activities: prev.activities.includes(activity)
-        ? prev.activities.filter((a) => a !== activity)
-        : [...prev.activities, activity],
-    }));
   }
 
   // --- Submit ---
@@ -210,12 +217,7 @@ const TripPlannerPage: NextPage = () => {
             <input
               type="text"
               value={form.destination}
-              onChange={(e) => {
-                const val = e.target.value;
-                setForm((p) => ({ ...p, destination: val, latitude: '', longitude: '' }));
-                if (resolvedLocation) resetGeocoding();
-              }}
-              onBlur={handleDestinationBlur}
+              onChange={(e) => handleDestinationChange(e.target.value)}
               className={INPUT_CLS}
               placeholder="e.g. Tokyo, Japan"
             />
@@ -350,22 +352,14 @@ const TripPlannerPage: NextPage = () => {
       content: (
         <div className="space-y-4">
           <Field label="Activities">
-            <div className="flex flex-wrap gap-2 pt-1">
-              {ALL_ACTIVITIES.map((activity) => (
-                <button
-                  key={activity}
-                  type="button"
-                  onClick={() => toggleActivity(activity)}
-                  className={[
-                    'rounded px-3 py-1.5 text-sm capitalize transition-colors',
-                    form.activities.includes(activity)
-                      ? 'bg-accent-500 text-white'
-                      : 'bg-sand-100 text-gray-600 hover:bg-sand-200',
-                  ].join(' ')}
-                >
-                  {activity}
-                </button>
-              ))}
+            <div className="space-y-3">
+              {/* Selected activities as chips + custom entry */}
+              <TagInput
+                tags={form.activities}
+                onChange={(activities) => setForm((p) => ({ ...p, activities }))}
+                presets={ALL_ACTIVITIES.filter((a) => !form.activities.includes(a))}
+                placeholder="Add a custom activity and press Enter"
+              />
             </div>
           </Field>
           <Field label="Vibe">

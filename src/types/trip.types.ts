@@ -5,15 +5,9 @@ import type { ClosetItem } from './wardrobe.types';
 export type { WeatherForecast } from '../features/trips/types/trip';
 import type { WeatherForecast } from '../features/trips/types/trip';
 
-export type TripActivity =
-  | 'beach'
-  | 'hiking'
-  | 'business'
-  | 'sightseeing'
-  | 'dining'
-  | 'nightlife'
-  | 'skiing'
-  | 'casual';
+// Preset values used for formality matching and AI parsing.
+// Widened to string so users can add custom activities.
+export type TripActivity = string;
 
 export type TripVibe =
   | 'relaxed'

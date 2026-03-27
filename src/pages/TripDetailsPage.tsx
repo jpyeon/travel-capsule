@@ -16,6 +16,8 @@ import { Modal } from '../components/shared/Modal';
 import { FormField as Field, INPUT_CLS } from '../components/shared/FormField';
 import { OutfitCard } from '../components/trip/OutfitCard';
 import { PackingCard } from '../components/trip/PackingCard';
+import { TagInput } from '../components/shared/TagInput';
+import { outfitKey } from '../hooks/useOutfitVisualization';
 import { formatDateShort, formatDateLong } from '../utils/date.utils';
 import { usePackingVisualization } from '../hooks/usePackingVisualization';
 import type { PackingList } from '../features/packing';
@@ -92,18 +94,6 @@ const TripDetailsPage: NextPage = () => {
   function closeEdit() {
     setEditOpen(false);
     setEditForm(null);
-  }
-
-  function toggleActivity(activity: TripActivity) {
-    setEditForm((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        activities: prev.activities.includes(activity)
-          ? prev.activities.filter((a) => a !== activity)
-          : [...prev.activities, activity],
-      };
-    });
   }
 
   async function handleEditSubmit(e: FormEvent) {
@@ -275,23 +265,12 @@ const TripDetailsPage: NextPage = () => {
             </Field>
 
             <Field label="Activities">
-              <div className="flex flex-wrap gap-2 pt-1">
-                {ALL_ACTIVITIES.map((activity) => (
-                  <button
-                    key={activity}
-                    type="button"
-                    onClick={() => toggleActivity(activity)}
-                    className={[
-                      'rounded px-2 py-1 text-xs capitalize transition-colors',
-                      editForm.activities.includes(activity)
-                        ? 'bg-accent-500 text-white'
-                        : 'bg-sand-100 text-gray-600 hover:bg-sand-200',
-                    ].join(' ')}
-                  >
-                    {activity}
-                  </button>
-                ))}
-              </div>
+              <TagInput
+                tags={editForm.activities}
+                onChange={(activities) => setEditForm((p) => p && ({ ...p, activities }))}
+                presets={ALL_ACTIVITIES.filter((a) => !editForm.activities.includes(a))}
+                placeholder="Add a custom activity and press Enter"
+              />
             </Field>
 
             {editError && <p className="text-sm text-red-600">{editError}</p>}
@@ -324,8 +303,12 @@ function CapsuleSection({
   closetItems: ClosetItem[];
   userId: string;
 }) {
-  const { capsule, outfits, packingList, packedItems, loading, generating, error, savedAt, generate, togglePacked, reset } =
-    useCapsuleWardrobe(trip, closetItems, userId);
+  const {
+    capsule, outfits, packingList, packedItems,
+    loading, generating, error, savedAt,
+    packingVisualizationUrl, outfitVisualizationUrls,
+    generate, togglePacked, savePackingVisualizationUrl, saveOutfitVisualizationUrl, reset,
+  } = useCapsuleWardrobe(trip, closetItems, userId);
 
   if (loading) {
     return (
@@ -388,6 +371,8 @@ function CapsuleSection({
             capsule={capsule}
             destination={trip.destination}
             vibe={trip.vibe}
+            outfitVisualizationUrls={outfitVisualizationUrls}
+            onSaveOutfitVisualization={saveOutfitVisualizationUrl}
           />
           {packingList && (
             <PackingCard
@@ -403,6 +388,8 @@ function CapsuleSection({
               capsule={capsule}
               destination={trip.destination}
               vibe={trip.vibe}
+              initialUrl={packingVisualizationUrl}
+              onSave={savePackingVisualizationUrl}
             />
           )}
         </>
@@ -472,11 +459,15 @@ function DailyOutfitsSection({
   capsule,
   destination,
   vibe,
+  outfitVisualizationUrls,
+  onSaveOutfitVisualization,
 }: {
   outfits: DailyOutfit[];
   capsule: CapsuleWardrobe;
   destination: string;
   vibe: string;
+  outfitVisualizationUrls: Record<string, string>;
+  onSaveOutfitVisualization: (key: string, url: string) => void;
 }) {
   if (outfits.length === 0) return null;
 
@@ -503,13 +494,15 @@ function DailyOutfitsSection({
               </span>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {dayOutfits.map((outfit, i) => (
+              {dayOutfits.map((outfit) => (
                 <OutfitCard
-                  key={i}
+                  key={outfitKey(outfit.date, outfit.activity)}
                   outfit={outfit}
                   itemById={itemById}
                   destination={destination}
                   vibe={vibe}
+                  initialUrl={outfitVisualizationUrls[outfitKey(outfit.date, outfit.activity)] ?? null}
+                  onSave={onSaveOutfitVisualization}
                 />
               ))}
             </div>
@@ -529,17 +522,23 @@ function PackingVisualizationSection({
   capsule,
   destination,
   vibe,
+  initialUrl,
+  onSave,
 }: {
   packingList: PackingList;
   capsule: CapsuleWardrobe;
   destination: string;
   vibe: string;
+  initialUrl: string | null;
+  onSave: (url: string) => void;
 }) {
   const { imageData, generating, error, generate } = usePackingVisualization(
     packingList,
     capsule,
     destination,
     vibe,
+    initialUrl,
+    onSave,
   );
 
   return (

@@ -18,6 +18,7 @@ import { ClosetGrid } from '../components/closet/ClosetGrid';
 import { Button } from '../components/shared/Button';
 import { Modal } from '../components/shared/Modal';
 import { FormField as Field, INPUT_CLS } from '../components/shared/FormField';
+import { TagInput } from '../components/shared/TagInput';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -41,7 +42,7 @@ interface ClosetFormState {
   warmth: string;
   formality: string;
   imageUrl: string;
-  tags: string; // comma-separated
+  tags: string[];
 }
 
 const EMPTY_FORM: ClosetFormState = {
@@ -52,7 +53,7 @@ const EMPTY_FORM: ClosetFormState = {
   warmth: '3',
   formality: '3',
   imageUrl: '',
-  tags: '',
+  tags: [],
 };
 
 function itemToFormState(item: ClosetItem): ClosetFormState {
@@ -64,15 +65,8 @@ function itemToFormState(item: ClosetItem): ClosetFormState {
     warmth: String(item.warmthScore),
     formality: String(item.formalityScore),
     imageUrl: item.imageUrl ?? '',
-    tags: item.tags.join(', '),
+    tags: item.tags,
   };
-}
-
-function parseTags(raw: string): string[] {
-  return raw
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
 }
 
 /** Clamp a raw string to a valid 1–5 level, defaulting to 3 on bad input. */
@@ -170,9 +164,8 @@ const ClosetPage: NextPage = () => {
       const data = await res.json() as { tags?: string[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to suggest tags');
       // Merge suggested tags with any the user already typed
-      const existing = parseTags(form.tags);
-      const merged = [...new Set([...existing, ...(data.tags ?? [])])];
-      setForm((p) => ({ ...p, tags: merged.join(', ') }));
+      const merged = [...new Set([...form.tags, ...(data.tags ?? [])])];
+      setForm((p) => ({ ...p, tags: merged }));
     } catch (err) {
       setSuggestError((err as Error).message);
     } finally {
@@ -195,7 +188,7 @@ const ClosetPage: NextPage = () => {
           warmth:    clampLevel(form.warmth),
           formality: clampLevel(form.formality),
           imageUrl:  form.imageUrl || null,
-          tags:      parseTags(form.tags),
+          tags:      form.tags,
         };
         await updateItem(editingItem.id, input);
       } else {
@@ -207,7 +200,7 @@ const ClosetPage: NextPage = () => {
           warmth:    clampLevel(form.warmth),
           formality: clampLevel(form.formality),
           imageUrl:  form.imageUrl || undefined,
-          tags:      parseTags(form.tags),
+          tags:      form.tags,
         };
         await addItem(input);
       }
@@ -346,13 +339,11 @@ const ClosetPage: NextPage = () => {
             )}
           </Field>
 
-          <Field label="Tags (comma-separated)">
-            <input
-              type="text"
-              value={form.tags}
-              onChange={(e) => setForm((p) => ({ ...p, tags: e.target.value }))}
-              className={INPUT_CLS}
-              placeholder="e.g. waterproof, everyday, layering"
+          <Field label="Tags">
+            <TagInput
+              tags={form.tags}
+              onChange={(tags) => setForm((p) => ({ ...p, tags }))}
+              presets={['waterproof', 'everyday', 'layering', 'smart-casual', 'beach', 'business', 'packable', 'lightweight', 'formal', 'activewear']}
             />
           </Field>
 

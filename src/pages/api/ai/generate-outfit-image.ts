@@ -66,7 +66,6 @@ export default async function handler(
 
     return res.status(200).json({ imageData: result.imageData });
   } catch (err) {
-    console.error('[generate-outfit-image]', err);
     return res.status(500).json({ error: (err as Error).message });
   }
 }

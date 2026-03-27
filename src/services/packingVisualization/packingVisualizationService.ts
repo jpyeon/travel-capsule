@@ -3,6 +3,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { GenerationConfig } from '@google/generative-ai';
+import { extractGeminiImage } from '../geminiImageUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -70,14 +71,5 @@ export async function generatePackingImage(
     } as unknown as GenerationConfig,
   });
 
-  const parts = result.response.candidates?.[0]?.content?.parts ?? [];
-
-  for (const part of parts) {
-    const inlineData = (part as { inlineData?: { mimeType: string; data: string } }).inlineData;
-    if (inlineData?.data) {
-      return { imageData: `data:${inlineData.mimeType};base64,${inlineData.data}` };
-    }
-  }
-
-  throw new Error('Gemini returned no image data. Try regenerating.');
+  return { imageData: extractGeminiImage(result) };
 }

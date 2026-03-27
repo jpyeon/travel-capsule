@@ -1,5 +1,5 @@
 import type { DailyOutfit, ClosetItem } from '../../types';
-import { useOutfitVisualization } from '../../hooks/useOutfitVisualization';
+import { useOutfitVisualization, outfitKey } from '../../hooks/useOutfitVisualization';
 import { Button } from '../shared/Button';
 
 interface OutfitCardProps {
@@ -7,14 +7,18 @@ interface OutfitCardProps {
   itemById: Map<string, ClosetItem>;
   destination: string;
   vibe: string;
+  initialUrl: string | null;
+  onSave: (key: string, url: string) => void;
 }
 
-export function OutfitCard({ outfit, itemById, destination, vibe }: OutfitCardProps) {
+export function OutfitCard({ outfit, itemById, destination, vibe, initialUrl, onSave }: OutfitCardProps) {
   const { imageData, generating, error, generate } = useOutfitVisualization(
     outfit,
     itemById,
     destination,
     vibe,
+    initialUrl,
+    onSave,
   );
 
   const hasItems = outfit.items.length > 0;

@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const LINKS = [
   { href: '/DashboardPage', label: 'Trips' },
   { href: '/ClosetPage',    label: 'Closet' },
+  { href: '/ProfilePage',   label: 'Profile' },
 ];
 
 export function NavBar() {

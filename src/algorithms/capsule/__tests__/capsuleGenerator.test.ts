@@ -253,6 +253,19 @@ describe('generateCapsuleWardrobe', () => {
     expect(items.length).toBeGreaterThanOrEqual(6);
   });
 
+  it('does not crash with custom (non-preset) activities', () => {
+    // TripActivity is now string — users can add "wine tasting", "cycling", etc.
+    // activityBonusForItem must guard against unknown keys in ACTIVITY_PREFERENCES.
+    const { items } = generateCapsuleWardrobe(
+      buildMildWeatherCloset(),
+      [makeForecast()],
+      ['cycling', 'wine tasting', 'spa day'],
+      'relaxed',
+    );
+
+    expect(items.length).toBeGreaterThanOrEqual(6);
+  });
+
   it('handles all activities at once', () => {
     const allActivities: import('../../../types').TripActivity[] = [
       'beach', 'hiking', 'business', 'sightseeing', 'dining', 'nightlife', 'skiing', 'casual',

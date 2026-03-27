@@ -8,6 +8,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { TripActivity, TripVibe } from '../../../types';
 import { getAuthUser } from '../../../lib/apiAuth';
 
+function stripJsonFences(text: string): string {
+  return text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+}
+
 const TRIP_ACTIVITIES: TripActivity[] = [
   'beach', 'hiking', 'business', 'sightseeing', 'dining', 'nightlife', 'skiing', 'casual',
 ];
@@ -67,9 +71,9 @@ Rules:
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const text = stripJsonFences(result.response.text());
 
     const parsed = JSON.parse(text) as { activities: unknown; vibe: unknown };
 
@@ -82,7 +86,6 @@ Rules:
 
     return res.status(200).json({ activities: activities.length ? activities : ['casual'], vibe });
   } catch (err) {
-    console.error('[parse-trip]', err);
-    return res.status(500).json({ error: 'Failed to parse trip description' });
+    return res.status(500).json({ error: (err as Error).message ?? 'Failed to parse trip description' });
   }
 }
