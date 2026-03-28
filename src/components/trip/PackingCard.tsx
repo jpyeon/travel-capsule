@@ -1,9 +1,12 @@
 import type { PackingList, ClothingPackEntry, ToiletryEntry, PackingPriority } from '../../features/packing';
 import type { CapsuleWardrobe } from '../../features/capsule';
+import type { LuggageSize } from '../../features/trips/types/trip';
+import { estimatePackingCapacity, type PackingStatus } from '../../utils/packingCapacity';
 
 interface PackingCardProps {
   packingList: PackingList;
   capsule: CapsuleWardrobe;
+  luggageSize: LuggageSize;
   packedItems: Set<string>;
   onToggle: (key: string) => void;
 }
@@ -20,13 +23,22 @@ const PRIORITY_COLOR: Record<PackingPriority, string> = {
   optional: 'text-sand-400',
 };
 
-export function PackingCard({ packingList, capsule, packedItems, onToggle }: PackingCardProps) {
+const STATUS_STYLE: Record<PackingStatus, { bg: string; text: string; label: string }> = {
+  underpacked: { bg: 'bg-blue-50',    text: 'text-blue-700',    label: 'Room to spare' },
+  optimal:     { bg: 'bg-green-50',   text: 'text-green-700',   label: 'Good fit' },
+  overpacked:  { bg: 'bg-amber-50',   text: 'text-amber-700',   label: 'Tight fit' },
+};
+
+export function PackingCard({ packingList, capsule, luggageSize, packedItems, onToggle }: PackingCardProps) {
   const itemById = new Map(capsule.items.map((i) => [i.id, i]));
+  const categoryById = new Map(capsule.items.map((i) => [i.id, i.category]));
 
   const totalCount =
     packingList.clothing.length +
     packingList.accessories.length +
     packingList.toiletries.length;
+
+  const capacity = estimatePackingCapacity(packingList, luggageSize, categoryById);
 
   function clothingLabel(entry: ClothingPackEntry): string {
     return itemById.get(entry.itemId)?.name ?? entry.itemId;
@@ -53,6 +65,9 @@ export function PackingCard({ packingList, capsule, packedItems, onToggle }: Pac
           Print / Save as PDF
         </button>
       </div>
+
+      {/* Capacity bar */}
+      <CapacityBar percentageUsed={capacity.percentageUsed} status={capacity.status} suggestion={capacity.suggestion} />
 
       {/* Three columns */}
       <div className="grid grid-cols-1 gap-6 p-5 sm:grid-cols-3">
@@ -171,6 +186,39 @@ function PackingRow({
         {children}
       </span>
     </li>
+  );
+}
+
+function CapacityBar({
+  percentageUsed,
+  status,
+  suggestion,
+}: {
+  percentageUsed: number;
+  status: PackingStatus;
+  suggestion?: string;
+}) {
+  const style = STATUS_STYLE[status];
+  const barWidth = Math.min(percentageUsed, 100);
+
+  return (
+    <div className={`mx-5 mt-4 rounded-lg px-4 py-3 ${style.bg}`}>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className={`text-xs font-semibold ${style.text}`}>{style.label}</span>
+        <span className={`text-xs ${style.text}`}>{percentageUsed}% full</span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-white/60">
+        <div
+          className={`h-2 rounded-full transition-all duration-300 ${
+            status === 'overpacked' ? 'bg-amber-400' : status === 'optimal' ? 'bg-green-400' : 'bg-blue-300'
+          }`}
+          style={{ width: `${barWidth}%` }}
+        />
+      </div>
+      {suggestion && (
+        <p className={`mt-1.5 text-xs ${style.text}`}>{suggestion}</p>
+      )}
+    </div>
   );
 }
 

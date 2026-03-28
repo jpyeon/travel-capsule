@@ -8,6 +8,7 @@ import { getAuthUser } from '../../../lib/apiAuth';
 import {
   generatePackingImage,
   type PackingVisualizationInput,
+  type BagType,
 } from '../../../services/packingVisualization/packingVisualizationService';
 
 export interface GeneratePackingImageResponse {
@@ -36,7 +37,7 @@ export default async function handler(
     return res.status(500).json({ error: 'GEMINI_API_KEY is not configured' });
   }
 
-  const body = req.body as Partial<PackingVisualizationInput>;
+  const body = req.body as Partial<PackingVisualizationInput> & { suitcaseSize?: string };
 
   if (!body.destination?.trim()) {
     return res.status(400).json({ error: 'destination is required' });
@@ -45,14 +46,20 @@ export default async function handler(
     return res.status(400).json({ error: 'clothingItems must be a non-empty array' });
   }
 
+  // Accept bagType directly, or map legacy suitcaseSize field for backwards compat
+  const VALID_BAG_TYPES: BagType[] = ['suitcase', 'backpack', 'duffel'];
+  const bagType: BagType = VALID_BAG_TYPES.includes(body.bagType as BagType)
+    ? (body.bagType as BagType)
+    : 'suitcase';
+
   try {
     const result = await generatePackingImage(
       {
         clothingItems: body.clothingItems,
-        accessories:   body.accessories   ?? [],
-        suitcaseSize:  body.suitcaseSize  ?? 'carry-on',
+        accessories:   body.accessories ?? [],
+        bagType,
         destination:   body.destination,
-        vibe:          body.vibe          ?? 'relaxed',
+        vibe:          body.vibe ?? 'relaxed',
       },
       apiKey,
     );

@@ -19,8 +19,9 @@ import { PackingCard } from '../components/trip/PackingCard';
 import { TagInput } from '../components/shared/TagInput';
 import { outfitKey } from '../hooks/useOutfitVisualization';
 import { formatDateShort, formatDateLong } from '../utils/date.utils';
-import { usePackingVisualization } from '../hooks/usePackingVisualization';
+import { usePackingVisualization, type BagType } from '../hooks/usePackingVisualization';
 import { useTravelInfo } from '../hooks/useTravelInfo';
+import { BagSelector } from '../components/trip/BagSelector';
 import type { PackingList } from '../features/packing';
 
 // ---------------------------------------------------------------------------
@@ -44,6 +45,12 @@ const LUGGAGE_OPTIONS: { value: LuggageSize; label: string }[] = [
   { value: 'carry-on',  label: 'Carry-on' },
   { value: 'checked',   label: 'Checked' },
 ];
+
+const LUGGAGE_TO_BAG: Record<LuggageSize, BagType> = {
+  backpack:  'backpack',
+  'carry-on': 'suitcase',
+  checked:   'duffel',
+};
 
 interface EditFormState {
   destination: string;
@@ -445,6 +452,7 @@ function CapsuleSection({
             <PackingCard
               packingList={packingList}
               capsule={capsule}
+              luggageSize={trip.luggageSize}
               packedItems={packedItems}
               onToggle={togglePacked}
             />
@@ -455,6 +463,7 @@ function CapsuleSection({
               capsule={capsule}
               destination={trip.destination}
               vibe={trip.vibe}
+              luggageSize={trip.luggageSize}
               initialUrl={packingVisualizationUrl}
               onSave={savePackingVisualizationUrl}
             />
@@ -589,6 +598,7 @@ function PackingVisualizationSection({
   capsule,
   destination,
   vibe,
+  luggageSize,
   initialUrl,
   onSave,
 }: {
@@ -596,41 +606,77 @@ function PackingVisualizationSection({
   capsule: CapsuleWardrobe;
   destination: string;
   vibe: string;
+  luggageSize: LuggageSize;
   initialUrl: string | null;
   onSave: (url: string) => void;
 }) {
-  const { imageData, generating, error, generate } = usePackingVisualization(
+  const [bagType, setBagType] = useState<BagType>(LUGGAGE_TO_BAG[luggageSize]);
+
+  const { imageData, generating, error, generate, stale } = usePackingVisualization(
     packingList,
     capsule,
     destination,
     vibe,
+    bagType,
     initialUrl,
     onSave,
   );
 
   return (
     <section>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <h2 className="text-base font-bold text-gray-900">Packing visualization</h2>
+        <BagSelector value={bagType} onChange={setBagType} disabled={generating} />
         <Button
-          variant={imageData ? 'secondary' : 'primary'}
+          variant={imageData && !stale ? 'secondary' : 'primary'}
           onClick={generate}
           loading={generating}
           disabled={generating}
         >
-          {imageData ? 'Regenerate' : 'Visualize packing'}
+          {generating ? 'Generating…' : imageData && !stale ? 'Regenerate' : 'Visualize packing'}
         </Button>
       </div>
 
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="mb-3 text-sm text-red-600">{error}</p>
       )}
 
+      {/* Stale banner — bag type changed, prompt to regenerate */}
+      {stale && imageData && !generating && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg bg-amber-50 px-4 py-2.5 text-xs text-amber-700">
+          <span>Bag type changed — regenerate to update the image.</span>
+        </div>
+      )}
+
+      {/* Loading skeleton */}
       {generating && !imageData && (
-        <div className="h-72 w-full animate-pulse rounded-xl bg-sand-100" />
+        <div className="flex h-72 w-full items-center justify-center rounded-xl bg-sand-100">
+          <div className="text-center">
+            <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-2 border-sand-300 border-t-accent-500" />
+            <p className="text-xs text-sand-400">Generating {bagType} visualization…</p>
+          </div>
+        </div>
       )}
 
-      {imageData && (
+      {/* Generating overlay on existing image */}
+      {generating && imageData && (
+        <div className="relative overflow-hidden rounded-xl border border-sand-200 shadow-card">
+          <img
+            src={imageData}
+            alt={`Packing visualization for ${destination}`}
+            className="w-full object-cover opacity-40"
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-2 border-sand-300 border-t-accent-500" />
+              <p className="text-xs text-sand-500">Regenerating…</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image */}
+      {imageData && !generating && (
         <div className="overflow-hidden rounded-xl border border-sand-200 shadow-card">
           <img
             src={imageData}
@@ -640,9 +686,10 @@ function PackingVisualizationSection({
         </div>
       )}
 
+      {/* Empty fallback */}
       {!imageData && !generating && !error && (
         <p className="text-sm text-sand-400">
-          Generate a visual preview of your packed suitcase.
+          Generate a visual preview of your packed {bagType}.
         </p>
       )}
     </section>

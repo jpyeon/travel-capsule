@@ -9,10 +9,12 @@ import { extractGeminiImage } from '../geminiImageUtils';
 // Types
 // ---------------------------------------------------------------------------
 
+export type BagType = 'suitcase' | 'backpack' | 'duffel';
+
 export interface PackingVisualizationInput {
   clothingItems: string[];   // e.g. ["navy chinos", "white linen shirt"]
   accessories: string[];     // e.g. ["sunglasses", "belt"]
-  suitcaseSize: 'carry-on' | 'checked';
+  bagType: BagType;
   destination: string;       // e.g. "Tokyo"
   vibe: string;              // e.g. "relaxed"
 }
@@ -22,25 +24,59 @@ export interface PackingVisualizationResult {
 }
 
 // ---------------------------------------------------------------------------
-// Prompt
+// Prompt builder
 // ---------------------------------------------------------------------------
 
+interface BagStyle {
+  label: string;
+  layout: string;
+}
+
+const BAG_STYLES: Record<BagType, BagStyle> = {
+  suitcase: {
+    label: 'hard-shell carry-on suitcase',
+    layout: [
+      '- Items folded and organized in tidy rows by category',
+      '- Flat-lay arrangement with clear separation between sections',
+      '- Suitcase viewed from directly above, fully open',
+    ].join('\n'),
+  },
+  backpack: {
+    label: 'travel backpack',
+    layout: [
+      '- Items rolled and layered vertically from bottom to top',
+      '- Heavier items at the base, lighter items on top',
+      '- Backpack open and leaning slightly back, showing interior layers',
+    ].join('\n'),
+  },
+  duffel: {
+    label: 'travel duffel bag',
+    layout: [
+      '- Items softly stacked and nested inside the bag',
+      '- Packing cubes or bundles visible with casual organization',
+      '- Duffel unzipped and viewed from above at a slight angle',
+    ].join('\n'),
+  },
+};
+
 function buildPrompt(input: PackingVisualizationInput): string {
+  const style = BAG_STYLES[input.bagType];
   const allItems = [...input.clothingItems, ...input.accessories];
 
   return `
-Create a photorealistic top-down view of an open ${input.suitcaseSize} suitcase
+Create a photorealistic top-down view of an open ${style.label}
 packed for a ${input.vibe} trip to ${input.destination}.
 
-The suitcase contains these items, neatly arranged and clearly visible:
+The bag contains these items, neatly arranged and clearly visible:
 ${allItems.map((item, i) => `${i + 1}. ${item}`).join('\n')}
 
+Layout:
+${style.layout}
+
 Style requirements:
-- Clean, flat-lay aesthetic on a neutral background
-- Items folded and organized in tidy rows by category
+- Clean, editorial aesthetic on a neutral background
 - Soft natural lighting, no harsh shadows
 - Minimalist travel editorial quality
-- Suitcase viewed from directly above, fully open
 - Each item should be clearly distinguishable
 `.trim();
 }

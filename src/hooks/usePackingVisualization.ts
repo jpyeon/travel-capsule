@@ -7,6 +7,9 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { PackingList } from '../features/packing';
 import type { CapsuleWardrobe } from '../features/capsule';
+import type { BagType } from '../services/packingVisualization/packingVisualizationService';
+
+export type { BagType } from '../services/packingVisualization/packingVisualizationService';
 
 // ---------------------------------------------------------------------------
 // Return type
@@ -16,6 +19,8 @@ export interface UsePackingVisualizationReturn {
   imageData: string | null;
   generating: boolean;
   error: string | null;
+  /** True when the bag type changed since the last generated image. */
+  stale: boolean;
   generate: () => Promise<void>;
 }
 
@@ -28,6 +33,7 @@ export function usePackingVisualization(
   capsule: CapsuleWardrobe | null,
   destination: string,
   vibe: string,
+  bagType: BagType,
   initialUrl: string | null,
   onSave: (url: string) => void,
 ): UsePackingVisualizationReturn {
@@ -35,7 +41,12 @@ export function usePackingVisualization(
   const [generating, setGenerating] = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
+  // Track which bagType the current image was generated for
+  const lastBagTypeRef = useRef<BagType | null>(initialUrl ? bagType : null);
   const generatingRef = useRef(false);
+
+  // Clear cached image when bagType changes (user picks a different bag)
+  const stale = lastBagTypeRef.current !== null && lastBagTypeRef.current !== bagType;
 
   const generate = useCallback(async () => {
     if (generatingRef.current || !packingList || !capsule) return;
@@ -59,8 +70,8 @@ export function usePackingVisualization(
         },
         body: JSON.stringify({
           clothingItems,
-          accessories:  packingList.accessories,
-          suitcaseSize: 'carry-on',
+          accessories: packingList.accessories,
+          bagType,
           destination,
           vibe,
         }),
@@ -72,6 +83,7 @@ export function usePackingVisualization(
       const url = data.imageData ?? null;
       if (url) {
         setImageData(url);
+        lastBagTypeRef.current = bagType;
         onSave(url);
       }
     } catch (err) {
@@ -80,7 +92,7 @@ export function usePackingVisualization(
       generatingRef.current = false;
       setGenerating(false);
     }
-  }, [packingList, capsule, destination, vibe, onSave]);
+  }, [packingList, capsule, destination, vibe, bagType, onSave]);
 
-  return { imageData, generating, error, generate };
+  return { imageData, generating, error, generate, stale };
 }
