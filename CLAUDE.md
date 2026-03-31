@@ -53,7 +53,7 @@ Pages → Hooks → Services → Repositories → Supabase
 | Pages | `src/pages/` | Route-level; delegate everything to hooks |
 | API routes | `src/pages/api/` | Server-side Next.js API handlers (Gemini integration) |
 | External services | `src/services/` | Third-party API integrations (weather, geocoding) |
-| Utilities | `src/utils/` | Pure helper functions (date, temperature) |
+| Utilities | `src/utils/` | Pure helper functions (date, temperature, packing capacity, Gemini response cleanup, error extraction) |
 
 ### Feature Module Structure
 
@@ -69,17 +69,17 @@ src/<feature>/
 
 **Fully implemented:**
 - `src/closet/` — repository + service + types (DTO includes `material` and `tags`)
-- `src/utils/` — date and temperature helpers
+- `src/utils/` — date helpers, temperature helpers, packing capacity estimation, Gemini utils, error utils
 - `src/types/` — global domain types (`WeatherForecast` re-exported from `src/features/trips/types/trip.ts`)
 - `src/lib/supabase.ts` — Supabase singleton
 - `src/lib/apiAuth.ts` — Bearer token validation for API routes (`getAuthUser`)
 - `src/contexts/AuthContext.tsx` — `AuthProvider` + `useAuth()` (user, userId, loading, signOut)
 - `src/features/trips/` — `TripService` with weather pipeline integration
-- `src/services/weather/weatherService.ts` — Open-Meteo integration, no API key required
+- `src/services/weather/weatherService.ts` — Open-Meteo integration, no API key required; in-memory cache (30-min TTL) with LRU eviction (max 50) and localStorage persistence
 - `src/services/geocoding/geocodingService.ts` — Open-Meteo geocoding, no API key; `searchDestination(query)` returns up to 5 `GeocodingResult[]`
 - `src/algorithms/capsule/capsuleGenerator.ts` — full 5-step pipeline with versatility scoring + unit tests
 - `src/algorithms/outfit/outfitGenerator.ts` — activity formality filtering, streak tracking, color ranking + unit tests
-- `src/features/packing/services/packingService.ts` — wear-count aggregation, accessory dedup, toiletries + unit tests
+- `src/features/packing/services/packingService.ts` — wear-count aggregation, accessory dedup, toiletries with priority tiers (`PackingPriority`: essential/recommended/optional), `ToiletryEntry` type + unit tests
 - `src/hooks/useCloset.ts` — optimistic state: addItem / updateItem / removeItem / refresh
 - `src/hooks/useTrip.ts` — createTrip (non-optimistic, weather-aware) / updateTrip / deleteTrip / refresh
 - `src/hooks/useCapsuleWardrobe.ts` — manual `generate()` trigger; runs capsule → outfits → packing pipeline
@@ -95,17 +95,29 @@ src/<feature>/
 - `src/pages/ClosetPage.tsx` — full closet management page (add/edit/delete items)
 - `src/pages/TripPage.tsx` — full trip management page (create/edit/delete trips)
 - `src/pages/CapsulePage.tsx` — capsule wardrobe generation, daily outfits, packing list view
-- `src/pages/api/gemini/parse-trip.ts` — POST; parses free-text trip description → `{ activities, vibe }` via Gemini 2.0 Flash
-- `src/pages/api/gemini/suggest-tags.ts` — POST; suggests clothing tags from free-text description via Gemini 2.0 Flash
-- `src/pages/api/ai/generate-packing-image.ts` — POST; generates suitcase flat-lay visualization via Gemini 2.5 Flash Image
+- `src/pages/api/gemini/parse-trip.ts` — POST; parses free-text trip description → `{ activities, vibe }` via Gemini 2.5 Flash
+- `src/pages/api/gemini/suggest-tags.ts` — POST; suggests clothing tags from free-text description via Gemini 2.5 Flash
+- `src/pages/api/gemini/travel-info.ts` — POST; returns destination-specific savings tips and travel considerations via Gemini 2.5 Flash
+- `src/pages/api/gemini/generate-packing-image.ts` — POST; generates bag-specific flat-lay visualization (suitcase/backpack/duffel) via Gemini 2.5 Flash Image
 - `src/pages/api/ai/generate-outfit-image.ts` — POST; generates outfit flat-lay via provider abstraction (Gemini default, swap via `OUTFIT_PROVIDER` env var)
 - `src/pages/api/images/upload-profile-photo.ts` — POST; normalizes (sharp) + uploads profile photo to Supabase Storage, saves URL in `user_profiles`
 - `src/services/imageNormalization/imageNormalizationService.ts` — server-side sharp pipeline: EXIF rotate, cover-crop, strip metadata, JPEG 85%
-- `src/services/packingVisualization/packingVisualizationService.ts` — builds structured prompt + calls Gemini image generation
+- `src/services/packingVisualization/packingVisualizationService.ts` — multi-bag prompt builder (`BagType`: suitcase/backpack/duffel) + Gemini image generation
 - `src/services/outfitVisualization/types.ts` — `OutfitVisualizationProvider` interface for swappable AI backends
 - `src/services/outfitVisualization/geminiProvider.ts` — Gemini 2.5 Flash Image implementation of `OutfitVisualizationProvider`
 - `src/features/userImages/` — `UserImageRepository`: `getProfile`, `uploadProfileImage`, `upsertProfileImageUrl`
+- `src/hooks/usePackingVisualization.ts` — manual `generate()` trigger; tracks `stale` state when bag type changes; abort on unmount, 30s timeout, retry support
+- `src/hooks/useTravelInfo.ts` — manual `fetch()` trigger; returns savings tips and travel considerations (not persisted); abort on unmount, 30s timeout, retry support
+- `src/hooks/useOutfitVisualization.ts` — per-outfit image generation; abort on unmount, 30s timeout, retry support
 - `src/hooks/useProfileImage.ts` — loads profile image URL on mount; `upload(file)` POSTs to normalize+upload route
+- `src/utils/packingCapacity.ts` — heuristic packing capacity estimation with category weights, per-bag capacity limits, status thresholds (underpacked/optimal/overpacked), and overpacked suggestions
+- `src/utils/gemini.utils.ts` — `stripJsonFences()` shared utility for cleaning markdown code fences from Gemini JSON responses
+- `src/utils/error.utils.ts` — `errorMessage()` safe error extraction from unknown catch values
+- `src/utils/fetchWithTimeout.ts` — fetch wrapper with AbortController + 30s timeout + merged signals; `TimeoutError` class
+- `src/validation/` — shared zod schemas for closet items, trips, and login; used by both client forms (react-hook-form) and service-layer validation
+- `src/components/trip/BagSelector.tsx` — suitcase/backpack/duffel toggle with icons
+- `src/components/trip/PackingCard.tsx` — packing list UI grouped by priority tier with capacity bar, pack/unpack checkboxes
+- `src/pages/TripDetailsPage.tsx` — trip details with capsule wardrobe, daily outfits, packing list, bag selector, packing visualization with stale detection
 - `src/pages/ProfilePage.tsx` — profile photo upload UI with preview, file picker, error handling
 
 **Stubbed / legacy (do not extend):**
@@ -149,7 +161,7 @@ src/<feature>/
 - Test runner: Vitest (`npm run test`)
 - Test files: co-located under `__tests__/` inside each module
 - All algorithm and service tests use factory helpers (`makeItem`, `makeWeather`, etc.) — never raw object literals
-- Current coverage: capsule generator (3), outfit generator (22), packing service (15) = 40 tests total
+- Current coverage: capsule generator (11), outfit generator (22), packing service (31), packing capacity (12), closet service (22), image normalization (16), closet item schema (16), trip schema (15), login schema (5), fetchWithTimeout (5), weather cache (7) = 162 tests total
 - Hooks and components are not yet tested
 
 ## Maintenance Rule
@@ -223,3 +235,8 @@ Row Level Security must be enabled on both tables — users can only access thei
 - **2026-03-26 — Shared components completed:** `NavBar` (auth-aware), `ErrorBoundary` (page-level crash protection), `TripCard` (trip summary + actions).
 - **2026-03-27 — AI visualization added:** Packing suitcase visualization (`POST /api/ai/generate-packing-image`) and per-outfit flat-lay visualization (`POST /api/ai/generate-outfit-image`) using Gemini 2.5 Flash Image. Outfit provider is abstracted behind `OutfitVisualizationProvider` interface — swap via `OUTFIT_PROVIDER` env var. Visualization URLs persisted in `capsule_wardrobes` table (`packing_visualization_url TEXT`, `outfit_visualizations JSONB`). Migration: `006_visualization_urls.sql`.
 - **2026-03-27 — Profile photo + image normalization pipeline:** `src/services/imageNormalization/imageNormalizationService.ts` (sharp: EXIF rotate, cover-crop 512×768 or 512×512, strip metadata, JPEG 85%). `POST /api/images/upload-profile-photo` normalizes → uploads to `profile-images` Supabase Storage bucket → saves URL in `user_profiles` table. `ProfilePage` with photo preview and file picker. Migration: `007_user_profile_images.sql`. **Manual step required:** create `profile-images` bucket in Supabase dashboard (Storage → New bucket → name: `profile-images`, public: true).
+- **2026-03-29 — Packing priority tiers:** `PackingPriority` type (`essential`/`recommended`/`optional`) added to clothing and toiletry entries. `ToiletryEntry` replaces raw `string[]` for toiletries. `PackingCard` groups items by priority tier. 31 packing service tests (up from 15).
+- **2026-03-29 — Shared utils consolidated:** `stripJsonFences()` extracted from 3 duplicated API routes into `src/utils/gemini.utils.ts`. `errorMessage()` added to `src/utils/error.utils.ts` — replaces unsafe `(err as Error).message` casts across all API routes.
+- **2026-03-29 — Multi-bag visualization + capacity estimation:** `BagType` (`suitcase`/`backpack`/`duffel`) with bag-specific Gemini prompts in `packingVisualizationService.ts`. `estimatePackingCapacity()` utility with heuristic category weights and per-bag capacity limits. `BagSelector` component. `PackingCard` displays capacity bar (underpacked/optimal/overpacked) with suggestions. `usePackingVisualization` tracks stale state when bag type changes. `TripDetailsPage` integrates bag selector, stale banner, and loading overlay. 12 capacity tests added.
+- **2026-03-29 — Type consolidation:** `TripActivity` and `TripVibe` moved to `src/features/trips/types/trip.ts` as canonical source. `src/types/trip.types.ts` now re-exports only (removed duplicate `Trip` interface that was missing `luggageSize`/`hasLaundryAccess`).
+- **2026-03-29 — High-impact improvements:** (1) Toast-only error handling — all pages except LoginPage use `sonner` toasts exclusively; inline error `<p>` elements removed. (2) Shared zod schemas (`src/validation/`) + `react-hook-form` with `zodResolver` on all form pages — field-level red borders, per-field error messages, submit disabled until valid; service-layer validation replaced with same zod schemas. (3) Gemini resilience — `fetchWithTimeout` utility (30s timeout, `AbortSignal.any` merging), abort on unmount, `TimeoutError` handling, retry buttons, "Taking longer than expected..." slow indicator in all Gemini hooks. (4) Weather cache hardened with LRU eviction (max 50 entries) and `localStorage` persistence (survives page reloads, graceful fallback). 48 new tests (162 total).
