@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import type { DailyOutfit, ClosetItem } from '../../types';
 import { useOutfitVisualization, outfitKey } from '../../hooks/useOutfitVisualization';
 import { Button } from '../shared/Button';
@@ -12,7 +13,7 @@ interface OutfitCardProps {
 }
 
 export function OutfitCard({ outfit, itemById, destination, vibe, initialUrl, onSave }: OutfitCardProps) {
-  const { imageData, generating, error, generate } = useOutfitVisualization(
+  const { imageData, generating, error, timedOut, generate, retry } = useOutfitVisualization(
     outfit,
     itemById,
     destination,
@@ -20,6 +21,14 @@ export function OutfitCard({ outfit, itemById, destination, vibe, initialUrl, on
     initialUrl,
     onSave,
   );
+
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => {
+    if (!generating) { setSlow(false); return; }
+    const timer = setTimeout(() => setSlow(true), 5000);
+    return () => clearTimeout(timer);
+  }, [generating]);
 
   const hasItems = outfit.items.length > 0;
 
@@ -65,17 +74,30 @@ export function OutfitCard({ outfit, itemById, destination, vibe, initialUrl, on
 
         {/* Visualize button */}
         {hasItems && (
-          <div className="mt-3 flex items-center gap-2 border-t border-sand-100 pt-3">
-            <Button
-              variant="secondary"
-              onClick={generate}
-              loading={generating}
-              disabled={generating}
-              className="text-xs px-3 py-1.5"
-            >
-              {imageData ? 'Regenerate' : 'Visualize outfit'}
-            </Button>
-            {error && <p className="text-xs text-red-500">{error}</p>}
+          <div className="mt-3 flex flex-col gap-1 border-t border-sand-100 pt-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={generate}
+                loading={generating}
+                disabled={generating}
+                className="text-xs px-3 py-1.5"
+              >
+                {imageData ? 'Regenerate' : 'Visualize outfit'}
+              </Button>
+              {error && !timedOut && <p className="text-xs text-red-500">{error}</p>}
+            </div>
+            {generating && slow && (
+              <p className="text-sm text-gray-500 mt-1">Taking longer than expected...</p>
+            )}
+            {(timedOut || error) && !generating && (
+              <button
+                onClick={retry}
+                className="mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                Retry
+              </button>
+            )}
           </div>
         )}
       </div>

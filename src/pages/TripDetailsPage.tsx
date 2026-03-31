@@ -1,6 +1,6 @@
 // Trip details — shows trip info, edit modal, and the full capsule/outfits/packing view.
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
@@ -610,7 +610,7 @@ function PackingVisualizationSection({
 }) {
   const [bagType, setBagType] = useState<BagType>(LUGGAGE_TO_BAG[luggageSize]);
 
-  const { imageData, generating, error, generate, stale } = usePackingVisualization(
+  const { imageData, generating, error, generate, stale, timedOut, retry } = usePackingVisualization(
     packingList,
     capsule,
     destination,
@@ -619,6 +619,14 @@ function PackingVisualizationSection({
     initialUrl,
     onSave,
   );
+
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => {
+    if (!generating) { setSlow(false); return; }
+    const timer = setTimeout(() => setSlow(true), 5000);
+    return () => clearTimeout(timer);
+  }, [generating]);
 
   return (
     <section>
@@ -648,6 +656,7 @@ function PackingVisualizationSection({
           <div className="text-center">
             <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-2 border-sand-300 border-t-accent-500" />
             <p className="text-xs text-sand-400">Generating {bagType} visualization…</p>
+            {slow && <p className="text-sm text-gray-500 mt-1">Taking longer than expected...</p>}
           </div>
         </div>
       )}
@@ -664,6 +673,7 @@ function PackingVisualizationSection({
             <div className="text-center">
               <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-2 border-sand-300 border-t-accent-500" />
               <p className="text-xs text-sand-500">Regenerating…</p>
+              {slow && <p className="text-sm text-gray-500 mt-1">Taking longer than expected...</p>}
             </div>
           </div>
         </div>
@@ -681,10 +691,20 @@ function PackingVisualizationSection({
       )}
 
       {/* Empty fallback */}
-      {!imageData && !generating && !error && (
+      {!imageData && !generating && !error && !timedOut && (
         <p className="text-sm text-sand-400">
           Generate a visual preview of your packed {bagType}.
         </p>
+      )}
+
+      {/* Retry button */}
+      {(timedOut || error) && !generating && (
+        <button
+          onClick={retry}
+          className="mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+        >
+          Retry
+        </button>
       )}
     </section>
   );
@@ -701,7 +721,15 @@ function TravelInfoSection({
   travelInfo: ReturnType<typeof useTravelInfo>;
   destination: string;
 }) {
-  const { info, loading, error, fetch } = travelInfo;
+  const { info, loading, error, timedOut, fetch, retry } = travelInfo;
+
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => {
+    if (!loading) { setSlow(false); return; }
+    const timer = setTimeout(() => setSlow(true), 5000);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   return (
     <section className="rounded-xl border border-sand-200 bg-white shadow-card overflow-hidden">
@@ -723,6 +751,7 @@ function TravelInfoSection({
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-4 animate-pulse rounded bg-sand-100" style={{ width: `${60 + i * 10}%` }} />
           ))}
+          {slow && <p className="text-sm text-gray-500 mt-1">Taking longer than expected...</p>}
         </div>
       )}
 
@@ -763,10 +792,21 @@ function TravelInfoSection({
         </div>
       )}
 
-      {!info && !loading && !error && (
+      {!info && !loading && !error && !timedOut && (
         <p className="px-5 py-4 text-sm text-sand-400">
           Get destination-specific tips: what to buy locally, visa reminders, cultural notes.
         </p>
+      )}
+
+      {(timedOut || error) && !loading && (
+        <div className="px-5 py-4">
+          <button
+            onClick={retry}
+            className="mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
       )}
     </section>
   );

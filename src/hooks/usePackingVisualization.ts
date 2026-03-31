@@ -3,9 +3,10 @@
 // Does not auto-run — the user triggers generate() explicitly.
 // Persists generated images via the onSave callback (fire-and-forget to DB).
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
+import { fetchWithTimeout, TimeoutError } from '../utils/fetchWithTimeout';
 import type { PackingList } from '../features/packing';
 import type { CapsuleWardrobe } from '../features/capsule';
 import type { BagType } from '../services/packingVisualization/packingVisualizationService';
@@ -22,7 +23,9 @@ export interface UsePackingVisualizationReturn {
   error: string | null;
   /** True when the bag type changed since the last generated image. */
   stale: boolean;
+  timedOut: boolean;
   generate: () => Promise<void>;
+  retry: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -41,16 +44,25 @@ export function usePackingVisualization(
   const [imageData, setImageData] = useState<string | null>(initialUrl);
   const [generating, setGenerating] = useState(false);
   const [error, setError]           = useState<string | null>(null);
+  const [timedOut, setTimedOut]     = useState(false);
 
   // Track which bagType the current image was generated for
   const lastBagTypeRef = useRef<BagType | null>(initialUrl ? bagType : null);
   const generatingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   // Clear cached image when bagType changes (user picks a different bag)
   const stale = lastBagTypeRef.current !== null && lastBagTypeRef.current !== bagType;
 
   const generate = useCallback(async () => {
     if (generatingRef.current || !packingList || !capsule) return;
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    setTimedOut(false);
     generatingRef.current = true;
     setGenerating(true);
     setError(null);
@@ -63,7 +75,7 @@ export function usePackingVisualization(
         .map((entry) => itemById.get(entry.itemId)?.name)
         .filter((name): name is string => name !== undefined);
 
-      const res = await fetch('/api/gemini/generate-packing-image', {
+      const res = await fetchWithTimeout('/api/gemini/generate-packing-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +88,8 @@ export function usePackingVisualization(
           destination,
           vibe,
         }),
-      });
+        signal: abortRef.current.signal,
+      }, 30_000);
 
       const data = await res.json() as { imageData?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to generate image');
@@ -88,14 +101,18 @@ export function usePackingVisualization(
         onSave(url);
       }
     } catch (err) {
-      const msg = (err as Error).message ?? 'Failed to generate image';
-      setError(msg);
-      toast.error(msg);
+      if (err instanceof TimeoutError) {
+        setTimedOut(true);
+        toast.error('Request timed out — try again');
+      } else if ((err as Error).name !== 'AbortError') {
+        setError((err as Error).message);
+        toast.error((err as Error).message);
+      }
     } finally {
       generatingRef.current = false;
       setGenerating(false);
     }
   }, [packingList, capsule, destination, vibe, bagType, onSave]);
 
-  return { imageData, generating, error, generate, stale };
+  return { imageData, generating, error, generate, stale, timedOut, retry: generate };
 }

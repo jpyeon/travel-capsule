@@ -4,9 +4,10 @@
 // Manual trigger only — never auto-generates on mount.
 // Persists generated images via the onSave callback (fire-and-forget to DB).
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
+import { fetchWithTimeout, TimeoutError } from '../utils/fetchWithTimeout';
 import type { DailyOutfit, ClosetItem } from '../types';
 import type { WeatherForecast } from '../features/trips/types/trip';
 import type { OutfitVisualizationInput } from '../services/outfitVisualization/types';
@@ -19,7 +20,9 @@ export interface UseOutfitVisualizationReturn {
   imageData: string | null;
   generating: boolean;
   error: string | null;
+  timedOut: boolean;
   generate: () => Promise<void>;
+  retry: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,11 +48,20 @@ export function useOutfitVisualization(
   const [imageData, setImageData] = useState<string | null>(initialUrl);
   const [generating, setGenerating] = useState(false);
   const [error, setError]           = useState<string | null>(null);
+  const [timedOut, setTimedOut]     = useState(false);
 
   const generatingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   const generate = useCallback(async () => {
     if (generatingRef.current || outfit.items.length === 0) return;
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    setTimedOut(false);
     generatingRef.current = true;
     setGenerating(true);
     setError(null);
@@ -82,14 +94,15 @@ export function useOutfitVisualization(
         weatherDescription,
       };
 
-      const res = await fetch('/api/ai/generate-outfit-image', {
+      const res = await fetchWithTimeout('/api/ai/generate-outfit-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
         },
         body: JSON.stringify(body),
-      });
+        signal: abortRef.current.signal,
+      }, 30_000);
 
       const data = await res.json() as { imageData?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to generate image');
@@ -100,16 +113,20 @@ export function useOutfitVisualization(
         onSave(outfitKey(outfit.date, outfit.activity), url);
       }
     } catch (err) {
-      const msg = (err as Error).message ?? 'Failed to generate image';
-      setError(msg);
-      toast.error(msg);
+      if (err instanceof TimeoutError) {
+        setTimedOut(true);
+        toast.error('Request timed out — try again');
+      } else if ((err as Error).name !== 'AbortError') {
+        setError((err as Error).message);
+        toast.error((err as Error).message);
+      }
     } finally {
       generatingRef.current = false;
       setGenerating(false);
     }
   }, [outfit, itemById, destination, vibe, onSave]);
 
-  return { imageData, generating, error, generate };
+  return { imageData, generating, error, timedOut, generate, retry: generate };
 }
 
 // ---------------------------------------------------------------------------
