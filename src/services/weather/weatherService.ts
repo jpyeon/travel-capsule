@@ -14,10 +14,12 @@ const OPEN_METEO_BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 // ---------------------------------------------------------------------------
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_CACHE_SIZE = 50;
+const STORAGE_KEY = 'travel-capsule:weather-cache';
 
 interface CacheEntry {
   forecast: WeatherForecast[];
-  expiresAt: number;
+  cachedAt: number;
 }
 
 const forecastCache = new Map<string, CacheEntry>();
@@ -26,6 +28,49 @@ const forecastCache = new Map<string, CacheEntry>();
 function cacheKey(latitude: number, longitude: number): string {
   return `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
 }
+
+function restoreFromStorage(): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const entries = JSON.parse(raw) as Record<string, CacheEntry>;
+    const now = Date.now();
+    for (const [key, entry] of Object.entries(entries)) {
+      if (now - entry.cachedAt < CACHE_TTL_MS) {
+        forecastCache.set(key, entry);
+      }
+    }
+  } catch {
+    // localStorage unavailable or corrupt — start fresh
+  }
+}
+
+function persistToStorage(): void {
+  try {
+    const obj: Record<string, CacheEntry> = {};
+    for (const [key, entry] of forecastCache) {
+      obj[key] = entry;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+  } catch {
+    // localStorage unavailable — ignore
+  }
+}
+
+function evictOldest(): void {
+  let oldestKey: string | null = null;
+  let oldestTime = Infinity;
+  for (const [key, entry] of forecastCache) {
+    if (entry.cachedAt < oldestTime) {
+      oldestTime = entry.cachedAt;
+      oldestKey = key;
+    }
+  }
+  if (oldestKey) forecastCache.delete(oldestKey);
+}
+
+// Restore on module load
+restoreFromStorage();
 
 // Shape of the "daily" object returned by Open-Meteo when the query params
 // daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max are sent.
@@ -66,7 +111,7 @@ export async function getWeatherForecast(
   // --- Cache check ---
   const key = cacheKey(latitude, longitude);
   const cached = forecastCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) {
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
     return cached.forecast;
   }
 
@@ -105,7 +150,11 @@ export async function getWeatherForecast(
   const forecast = parseOpenMeteoResponse(json);
 
   // --- Store in cache ---
-  forecastCache.set(key, { forecast, expiresAt: Date.now() + CACHE_TTL_MS });
+  if (forecastCache.size >= MAX_CACHE_SIZE) {
+    evictOldest();
+  }
+  forecastCache.set(key, { forecast, cachedAt: Date.now() });
+  persistToStorage();
 
   return forecast;
 }
