@@ -7,6 +7,9 @@
 import { useState, useEffect, useRef } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { tripSchema, type TripFormData } from '../validation/trip.schema';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,7 +17,7 @@ import { useTrip } from '../hooks/useTrip';
 import { searchDestination, type GeocodingResult } from '../services/geocoding/geocodingService';
 import { StepForm } from '../components/shared/StepForm';
 import { Button } from '../components/shared/Button';
-import { FormField as Field, INPUT_CLS } from '../components/shared/FormField';
+import { FormField as Field, INPUT_CLS, inputCls } from '../components/shared/FormField';
 import { TagInput } from '../components/shared/TagInput';
 import type { CreateTripInput, LuggageSize } from '../features/trips/types/trip';
 import type { TripActivity, TripVibe } from '../types';
@@ -38,29 +41,17 @@ const LUGGAGE_OPTIONS: { value: LuggageSize; label: string; description: string 
 ];
 
 // ---------------------------------------------------------------------------
-// Form state
+// Form defaults
 // ---------------------------------------------------------------------------
 
-interface TripFormState {
-  destination: string;
-  startDate: string;
-  endDate: string;
-  activities: TripActivity[];
-  vibe: TripVibe;
-  latitude: string;
-  longitude: string;
-  luggageSize: LuggageSize;
-  hasLaundryAccess: boolean;
-}
-
-const EMPTY_FORM: TripFormState = {
+const DEFAULT_VALUES: TripFormData = {
   destination: '',
   startDate: '',
   endDate: '',
   activities: [],
   vibe: 'relaxed',
-  latitude: '',
-  longitude: '',
+  latitude: 0,
+  longitude: 0,
   luggageSize: 'carry-on',
   hasLaundryAccess: false,
 };
@@ -74,7 +65,30 @@ const TripPlannerPage: NextPage = () => {
   const { userId, loading: authLoading } = useAuth();
   const { createTrip } = useTrip(userId ?? '');
 
-  const [form, setForm]             = useState<TripFormState>(EMPTY_FORM);
+  const {
+    register,
+    handleSubmit: rhfHandleSubmit,
+    formState: { errors, isValid },
+    setValue,
+    watch,
+    trigger,
+  } = useForm<TripFormData>({
+    resolver: zodResolver(tripSchema),
+    mode: 'onTouched',
+    defaultValues: DEFAULT_VALUES,
+  });
+
+  // Watch fields needed by UI
+  const watchDestination    = watch('destination');
+  const watchLatitude       = watch('latitude');
+  const watchLongitude      = watch('longitude');
+  const watchStartDate      = watch('startDate');
+  const watchEndDate        = watch('endDate');
+  const watchActivities     = watch('activities');
+  const watchVibe           = watch('vibe');
+  const watchLuggageSize    = watch('luggageSize');
+  const watchHasLaundry     = watch('hasLaundryAccess');
+
   const [submitting, setSubmitting] = useState(false);
 
   // Geocoding
@@ -104,15 +118,14 @@ const TripPlannerPage: NextPage = () => {
   function selectLocation(result: GeocodingResult) {
     setResolvedLocation(result);
     setGeocodingCandidates([]);
-    setForm((p) => ({
-      ...p,
-      latitude:  String(result.latitude),
-      longitude: String(result.longitude),
-    }));
+    setValue('latitude', result.latitude, { shouldValidate: true });
+    setValue('longitude', result.longitude, { shouldValidate: true });
   }
 
   function handleDestinationChange(value: string) {
-    setForm((p) => ({ ...p, destination: value, latitude: '', longitude: '' }));
+    setValue('destination', value, { shouldValidate: true });
+    setValue('latitude', 0, { shouldValidate: true });
+    setValue('longitude', 0, { shouldValidate: true });
     if (resolvedLocation) resetGeocoding();
 
     if (geocodeDebounceRef.current) clearTimeout(geocodeDebounceRef.current);
@@ -165,11 +178,8 @@ const TripPlannerPage: NextPage = () => {
       });
       const data = await res.json() as { activities?: TripActivity[]; vibe?: TripVibe; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to parse description');
-      setForm((p) => ({
-        ...p,
-        activities: data.activities ?? p.activities,
-        vibe: data.vibe ?? p.vibe,
-      }));
+      if (data.activities) setValue('activities', data.activities, { shouldValidate: true });
+      if (data.vibe) setValue('vibe', data.vibe, { shouldValidate: true });
     } catch {
       toast.error('Failed to parse trip description');
     } finally {
@@ -179,24 +189,22 @@ const TripPlannerPage: NextPage = () => {
 
   // --- Submit ---
 
-  async function handleSubmit() {
+  async function onSubmit(data: TripFormData) {
     setSubmitting(true);
     try {
-      const lat = parseFloat(form.latitude);
-      const lng = parseFloat(form.longitude);
-      if (isNaN(lat) || isNaN(lng)) {
+      if (!data.latitude || !data.longitude) {
         throw new Error('Location not resolved — tab off the destination field or enter coordinates manually.');
       }
       const input: CreateTripInput = {
-        destination:      form.destination,
-        startDate:        form.startDate,
-        endDate:          form.endDate,
-        activities:       form.activities,
-        vibe:             form.vibe,
-        latitude:         lat,
-        longitude:        lng,
-        luggageSize:      form.luggageSize,
-        hasLaundryAccess: form.hasLaundryAccess,
+        destination:      data.destination,
+        startDate:        data.startDate,
+        endDate:          data.endDate,
+        activities:       data.activities as TripActivity[],
+        vibe:             data.vibe,
+        latitude:         data.latitude,
+        longitude:        data.longitude,
+        luggageSize:      data.luggageSize,
+        hasLaundryAccess: data.hasLaundryAccess,
       };
       const trip = await createTrip(input);
       toast.success('Trip created');
@@ -206,6 +214,10 @@ const TripPlannerPage: NextPage = () => {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleSubmit() {
+    await rhfHandleSubmit(onSubmit)();
   }
 
   // ---------------------------------------------------------------------------
@@ -220,11 +232,12 @@ const TripPlannerPage: NextPage = () => {
           <Field label="Where are you going?">
             <input
               type="text"
-              value={form.destination}
+              value={watchDestination}
               onChange={(e) => handleDestinationChange(e.target.value)}
-              className={INPUT_CLS}
+              className={inputCls(!!errors.destination)}
               placeholder="e.g. Tokyo, Japan"
             />
+            {errors.destination && <p className="text-sm text-red-500">{errors.destination.message}</p>}
 
             <div className="mt-1 space-y-1">
               {geocoding && (
@@ -237,7 +250,7 @@ const TripPlannerPage: NextPage = () => {
                   </span>
                   <button
                     type="button"
-                    onClick={() => { resetGeocoding(); setForm((p) => ({ ...p, latitude: '', longitude: '' })); }}
+                    onClick={() => { resetGeocoding(); setValue('latitude', 0); setValue('longitude', 0); }}
                     className="text-xs text-gray-400 hover:text-gray-600"
                   >
                     Re-search
@@ -268,21 +281,21 @@ const TripPlannerPage: NextPage = () => {
                 <input
                   type="number"
                   step="any"
-                  value={form.latitude}
-                  onChange={(e) => setForm((p) => ({ ...p, latitude: e.target.value }))}
-                  className={INPUT_CLS}
+                  {...register('latitude', { valueAsNumber: true })}
+                  className={inputCls(!!errors.latitude)}
                   placeholder="e.g. 35.6762"
                 />
+                {errors.latitude && <p className="text-sm text-red-500">{errors.latitude.message}</p>}
               </Field>
               <Field label="Longitude" className="flex-1">
                 <input
                   type="number"
                   step="any"
-                  value={form.longitude}
-                  onChange={(e) => setForm((p) => ({ ...p, longitude: e.target.value }))}
-                  className={INPUT_CLS}
+                  {...register('longitude', { valueAsNumber: true })}
+                  className={inputCls(!!errors.longitude)}
                   placeholder="e.g. 139.6503"
                 />
+                {errors.longitude && <p className="text-sm text-red-500">{errors.longitude.message}</p>}
               </Field>
             </div>
           )}
@@ -312,8 +325,8 @@ const TripPlannerPage: NextPage = () => {
         </div>
       ),
       validate: () => {
-        if (!form.destination.trim()) return 'Enter a destination.';
-        if (!form.latitude || !form.longitude) return 'Select a location from the suggestions, or enter coordinates manually.';
+        if (!watchDestination?.trim()) return 'Enter a destination.';
+        if (!watchLatitude || !watchLongitude) return 'Select a location from the suggestions, or enter coordinates manually.';
         return null;
       },
     },
@@ -324,24 +337,24 @@ const TripPlannerPage: NextPage = () => {
           <Field label="Start date" className="flex-1">
             <input
               type="date"
-              value={form.startDate}
-              onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
-              className={INPUT_CLS}
+              {...register('startDate')}
+              className={inputCls(!!errors.startDate)}
             />
+            {errors.startDate && <p className="text-sm text-red-500">{errors.startDate.message}</p>}
           </Field>
           <Field label="End date" className="flex-1">
             <input
               type="date"
-              value={form.endDate}
-              onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
-              className={INPUT_CLS}
+              {...register('endDate')}
+              className={inputCls(!!errors.endDate)}
             />
+            {errors.endDate && <p className="text-sm text-red-500">{errors.endDate.message}</p>}
           </Field>
         </div>
       ),
       validate: () => {
-        if (!form.startDate || !form.endDate) return 'Set both a start and end date.';
-        if (form.endDate < form.startDate) return 'End date must be after start date.';
+        if (!watchStartDate || !watchEndDate) return 'Set both a start and end date.';
+        if (watchEndDate < watchStartDate) return 'End date must be after start date.';
         return null;
       },
     },
@@ -353,23 +366,24 @@ const TripPlannerPage: NextPage = () => {
             <div className="space-y-3">
               {/* Selected activities as chips + custom entry */}
               <TagInput
-                tags={form.activities}
-                onChange={(activities) => setForm((p) => ({ ...p, activities }))}
-                presets={ALL_ACTIVITIES.filter((a) => !form.activities.includes(a))}
+                tags={watchActivities ?? []}
+                onChange={(activities) => setValue('activities', activities, { shouldValidate: true })}
+                presets={ALL_ACTIVITIES.filter((a) => !(watchActivities ?? []).includes(a))}
                 placeholder="Add a custom activity and press Enter"
               />
             </div>
+            {errors.activities && <p className="text-sm text-red-500">{errors.activities.message}</p>}
           </Field>
           <Field label="Vibe">
             <select
-              value={form.vibe}
-              onChange={(e) => setForm((p) => ({ ...p, vibe: e.target.value as TripVibe }))}
-              className={INPUT_CLS}
+              {...register('vibe')}
+              className={inputCls(!!errors.vibe)}
             >
               {ALL_VIBES.map((v) => (
                 <option key={v} value={v} className="capitalize">{v}</option>
               ))}
             </select>
+            {errors.vibe && <p className="text-sm text-red-500">{errors.vibe.message}</p>}
           </Field>
 
           <Field label="Luggage">
@@ -378,10 +392,10 @@ const TripPlannerPage: NextPage = () => {
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setForm((p) => ({ ...p, luggageSize: opt.value }))}
+                  onClick={() => setValue('luggageSize', opt.value, { shouldValidate: true })}
                   className={[
                     'flex-1 rounded-lg border px-3 py-2 text-left transition-colors',
-                    form.luggageSize === opt.value
+                    watchLuggageSize === opt.value
                       ? 'border-accent-400 bg-accent-50 text-accent-700'
                       : 'border-sand-200 bg-white text-gray-600 hover:border-sand-300',
                   ].join(' ')}
@@ -397,27 +411,27 @@ const TripPlannerPage: NextPage = () => {
             <label className="flex items-center gap-3 cursor-pointer">
               <div
                 role="switch"
-                aria-checked={form.hasLaundryAccess}
-                onClick={() => setForm((p) => ({ ...p, hasLaundryAccess: !p.hasLaundryAccess }))}
+                aria-checked={watchHasLaundry}
+                onClick={() => setValue('hasLaundryAccess', !watchHasLaundry, { shouldValidate: true })}
                 className={[
                   'relative h-6 w-11 rounded-full transition-colors cursor-pointer',
-                  form.hasLaundryAccess ? 'bg-accent-500' : 'bg-sand-300',
+                  watchHasLaundry ? 'bg-accent-500' : 'bg-sand-300',
                 ].join(' ')}
               >
                 <span className={[
                   'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
-                  form.hasLaundryAccess ? 'translate-x-5' : 'translate-x-0.5',
+                  watchHasLaundry ? 'translate-x-5' : 'translate-x-0.5',
                 ].join(' ')} />
               </div>
               <span className="text-sm text-gray-600">
-                {form.hasLaundryAccess ? 'Yes — I can do laundry' : 'No — I need to pack for the full trip'}
+                {watchHasLaundry ? 'Yes — I can do laundry' : 'No — I need to pack for the full trip'}
               </span>
             </label>
           </Field>
         </div>
       ),
       validate: () =>
-        form.activities.length === 0 ? 'Pick at least one activity.' : null,
+        (watchActivities ?? []).length === 0 ? 'Pick at least one activity.' : null,
     },
   ];
 

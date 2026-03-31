@@ -1,6 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, type LoginFormData } from '../validation/login.schema';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/shared/Button';
@@ -10,11 +13,18 @@ const LoginPage: NextPage = () => {
   const { userId, loading: authLoading } = useAuth();
 
   const [mode, setMode]           = useState<'login' | 'signup'>('login');
-  const [email, setEmail]         = useState('');
-  const [password, setPassword]   = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [signupSuccess, setSignupSuccess] = useState(false);
+
+  const {
+    register,
+    handleSubmit: rhfHandleSubmit,
+    formState: { errors, isValid },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onTouched',
+  });
 
   // Redirect if already signed in
   if (!authLoading && userId) {
@@ -22,18 +32,17 @@ const LoginPage: NextPage = () => {
     return null;
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function onSubmit(data: LoginFormData) {
     setError(null);
     setSubmitting(true);
 
     try {
       if (mode === 'login') {
-        const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+        const { error: authError } = await supabase.auth.signInWithPassword({ email: data.email, password: data.password });
         if (authError) throw authError;
         // onAuthStateChange will update context → redirect happens above
       } else {
-        const { error: authError } = await supabase.auth.signUp({ email, password });
+        const { error: authError } = await supabase.auth.signUp({ email: data.email, password: data.password });
         if (authError) throw authError;
         setSignupSuccess(true);
       }
@@ -64,35 +73,32 @@ const LoginPage: NextPage = () => {
             Check your email for a confirmation link, then sign in.
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={rhfHandleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-600">Email</label>
               <input
-                required
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={INPUT_CLS}
+                {...register('email')}
+                className={`${INPUT_CLS_BASE} ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="you@example.com"
               />
+              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
             </div>
 
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-600">Password</label>
               <input
-                required
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={INPUT_CLS}
-                minLength={6}
+                {...register('password')}
+                className={`${INPUT_CLS_BASE} ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="At least 6 characters"
               />
+              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
-            <Button type="submit" loading={submitting}>
+            <Button type="submit" loading={submitting} disabled={!isValid || submitting}>
               {mode === 'login' ? 'Sign in' : 'Create account'}
             </Button>
 
@@ -130,5 +136,5 @@ const LoginPage: NextPage = () => {
 
 export default LoginPage;
 
-const INPUT_CLS =
-  'rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-1';
+const INPUT_CLS_BASE =
+  'rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-1';

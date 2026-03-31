@@ -1,8 +1,11 @@
 // Trip details — shows trip info, edit modal, and the full capsule/outfits/packing view.
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { tripUpdateSchema, type TripUpdateFormData } from '../validation/trip.schema';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../hooks/useTrip';
@@ -14,7 +17,7 @@ import type { CapsuleWardrobe } from '../features/capsule';
 import type { TripActivity, TripVibe } from '../types';
 import { Button } from '../components/shared/Button';
 import { Modal } from '../components/shared/Modal';
-import { FormField as Field, INPUT_CLS } from '../components/shared/FormField';
+import { FormField as Field, INPUT_CLS, inputCls } from '../components/shared/FormField';
 import { OutfitCard } from '../components/trip/OutfitCard';
 import { PackingCard } from '../components/trip/PackingCard';
 import { TagInput } from '../components/shared/TagInput';
@@ -53,17 +56,7 @@ const LUGGAGE_TO_BAG: Record<LuggageSize, BagType> = {
   checked:   'duffel',
 };
 
-interface EditFormState {
-  destination: string;
-  startDate: string;
-  endDate: string;
-  activities: TripActivity[];
-  vibe: TripVibe;
-  luggageSize: LuggageSize;
-  hasLaundryAccess: boolean;
-}
-
-function tripToEditForm(trip: Trip): EditFormState {
+function tripToEditDefaults(trip: Trip): TripUpdateFormData {
   return {
     destination:      trip.destination,
     startDate:        trip.startDate,
@@ -89,8 +82,24 @@ const TripDetailsPage: NextPage = () => {
 
   // Edit modal state
   const [editOpen, setEditOpen]       = useState(false);
-  const [editForm, setEditForm]       = useState<EditFormState | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // react-hook-form for edit modal
+  const {
+    register: editRegister,
+    handleSubmit: editHandleSubmit,
+    formState: { errors: editErrors, isValid: editIsValid },
+    reset: editReset,
+    setValue: editSetValue,
+    watch: editWatch,
+  } = useForm<TripUpdateFormData>({
+    resolver: zodResolver(tripUpdateSchema),
+    mode: 'onTouched',
+  });
+
+  const editActivities     = editWatch('activities');
+  const editLuggageSize    = editWatch('luggageSize');
+  const editHasLaundry     = editWatch('hasLaundryAccess');
 
   if (!authLoading && !userId) {
     void router.replace('/LoginPage');
@@ -104,28 +113,26 @@ const TripDetailsPage: NextPage = () => {
 
   function openEdit() {
     if (!trip) return;
-    setEditForm(tripToEditForm(trip));
+    editReset(tripToEditDefaults(trip));
     setEditOpen(true);
   }
 
   function closeEdit() {
     setEditOpen(false);
-    setEditForm(null);
   }
 
-  async function handleEditSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!editForm || !tripId) return;
+  async function onEditSubmit(data: TripUpdateFormData) {
+    if (!tripId) return;
     setEditSubmitting(true);
     try {
       const input: UpdateTripInput = {
-        destination:      editForm.destination,
-        startDate:        editForm.startDate,
-        endDate:          editForm.endDate,
-        activities:       editForm.activities,
-        vibe:             editForm.vibe,
-        luggageSize:      editForm.luggageSize,
-        hasLaundryAccess: editForm.hasLaundryAccess,
+        destination:      data.destination,
+        startDate:        data.startDate,
+        endDate:          data.endDate,
+        activities:       data.activities as TripActivity[] | undefined,
+        vibe:             data.vibe,
+        luggageSize:      data.luggageSize,
+        hasLaundryAccess: data.hasLaundryAccess,
       };
       await updateTrip(tripId, input);
       toast.success('Trip updated');
@@ -245,110 +252,106 @@ const TripDetailsPage: NextPage = () => {
 
       {/* Edit modal */}
       <Modal isOpen={editOpen} onClose={closeEdit} title="Edit trip">
-        {editForm && (
-          <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
+        <form onSubmit={editHandleSubmit(onEditSubmit)} className="flex flex-col gap-4">
 
-            <Field label="Destination">
+          <Field label="Destination">
+            <input
+              type="text"
+              {...editRegister('destination')}
+              className={inputCls(!!editErrors.destination)}
+            />
+            {editErrors.destination && <p className="text-sm text-red-500">{editErrors.destination.message}</p>}
+          </Field>
+
+          <div className="flex gap-3">
+            <Field label="Start date" className="flex-1">
               <input
-                required
-                type="text"
-                value={editForm.destination}
-                onChange={(e) => setEditForm((p) => p && ({ ...p, destination: e.target.value }))}
-                className={INPUT_CLS}
+                type="date"
+                {...editRegister('startDate')}
+                className={inputCls(!!editErrors.startDate)}
               />
+              {editErrors.startDate && <p className="text-sm text-red-500">{editErrors.startDate.message}</p>}
             </Field>
-
-            <div className="flex gap-3">
-              <Field label="Start date" className="flex-1">
-                <input
-                  required
-                  type="date"
-                  value={editForm.startDate}
-                  onChange={(e) => setEditForm((p) => p && ({ ...p, startDate: e.target.value }))}
-                  className={INPUT_CLS}
-                />
-              </Field>
-              <Field label="End date" className="flex-1">
-                <input
-                  required
-                  type="date"
-                  value={editForm.endDate}
-                  onChange={(e) => setEditForm((p) => p && ({ ...p, endDate: e.target.value }))}
-                  className={INPUT_CLS}
-                />
-              </Field>
-            </div>
-
-            <Field label="Vibe">
-              <select
-                value={editForm.vibe}
-                onChange={(e) => setEditForm((p) => p && ({ ...p, vibe: e.target.value as TripVibe }))}
-                className={INPUT_CLS}
-              >
-                {ALL_VIBES.map((v) => (
-                  <option key={v} value={v} className="capitalize">{v}</option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Activities">
-              <TagInput
-                tags={editForm.activities}
-                onChange={(activities) => setEditForm((p) => p && ({ ...p, activities }))}
-                presets={ALL_ACTIVITIES.filter((a) => !editForm.activities.includes(a))}
-                placeholder="Add a custom activity and press Enter"
+            <Field label="End date" className="flex-1">
+              <input
+                type="date"
+                {...editRegister('endDate')}
+                className={inputCls(!!editErrors.endDate)}
               />
+              {editErrors.endDate && <p className="text-sm text-red-500">{editErrors.endDate.message}</p>}
             </Field>
+          </div>
 
-            <Field label="Luggage">
-              <div className="flex gap-2 pt-1">
-                {LUGGAGE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setEditForm((p) => p && ({ ...p, luggageSize: opt.value }))}
-                    className={[
-                      'flex-1 rounded-lg border px-3 py-2 text-sm transition-colors',
-                      editForm.luggageSize === opt.value
-                        ? 'border-accent-400 bg-accent-50 text-accent-700 font-medium'
-                        : 'border-sand-200 bg-white text-gray-600 hover:border-sand-300',
-                    ].join(' ')}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </Field>
+          <Field label="Vibe">
+            <select
+              {...editRegister('vibe')}
+              className={inputCls(!!editErrors.vibe)}
+            >
+              {ALL_VIBES.map((v) => (
+                <option key={v} value={v} className="capitalize">{v}</option>
+              ))}
+            </select>
+            {editErrors.vibe && <p className="text-sm text-red-500">{editErrors.vibe.message}</p>}
+          </Field>
 
-            <Field label="Laundry access">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div
-                  role="switch"
-                  aria-checked={editForm.hasLaundryAccess}
-                  onClick={() => setEditForm((p) => p && ({ ...p, hasLaundryAccess: !p.hasLaundryAccess }))}
+          <Field label="Activities">
+            <TagInput
+              tags={(editActivities as string[]) ?? []}
+              onChange={(activities) => editSetValue('activities', activities, { shouldValidate: true })}
+              presets={ALL_ACTIVITIES.filter((a) => !(editActivities ?? []).includes(a))}
+              placeholder="Add a custom activity and press Enter"
+            />
+            {editErrors.activities && <p className="text-sm text-red-500">{editErrors.activities.message}</p>}
+          </Field>
+
+          <Field label="Luggage">
+            <div className="flex gap-2 pt-1">
+              {LUGGAGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => editSetValue('luggageSize', opt.value, { shouldValidate: true })}
                   className={[
-                    'relative h-6 w-11 rounded-full transition-colors cursor-pointer',
-                    editForm.hasLaundryAccess ? 'bg-accent-500' : 'bg-sand-300',
+                    'flex-1 rounded-lg border px-3 py-2 text-sm transition-colors',
+                    editLuggageSize === opt.value
+                      ? 'border-accent-400 bg-accent-50 text-accent-700 font-medium'
+                      : 'border-sand-200 bg-white text-gray-600 hover:border-sand-300',
                   ].join(' ')}
                 >
-                  <span className={[
-                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
-                    editForm.hasLaundryAccess ? 'translate-x-5' : 'translate-x-0.5',
-                  ].join(' ')} />
-                </div>
-                <span className="text-sm text-gray-600">
-                  {editForm.hasLaundryAccess ? 'Yes — I can do laundry' : 'No — packing for full trip'}
-                </span>
-              </label>
-            </Field>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" onClick={closeEdit}>Cancel</Button>
-              <Button type="submit" loading={editSubmitting}>Save changes</Button>
+                  {opt.label}
+                </button>
+              ))}
             </div>
+          </Field>
 
-          </form>
-        )}
+          <Field label="Laundry access">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div
+                role="switch"
+                aria-checked={editHasLaundry ?? false}
+                onClick={() => editSetValue('hasLaundryAccess', !editHasLaundry, { shouldValidate: true })}
+                className={[
+                  'relative h-6 w-11 rounded-full transition-colors cursor-pointer',
+                  editHasLaundry ? 'bg-accent-500' : 'bg-sand-300',
+                ].join(' ')}
+              >
+                <span className={[
+                  'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
+                  editHasLaundry ? 'translate-x-5' : 'translate-x-0.5',
+                ].join(' ')} />
+              </div>
+              <span className="text-sm text-gray-600">
+                {editHasLaundry ? 'Yes — I can do laundry' : 'No — packing for full trip'}
+              </span>
+            </label>
+          </Field>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={closeEdit}>Cancel</Button>
+            <Button type="submit" loading={editSubmitting} disabled={!editIsValid || editSubmitting}>Save changes</Button>
+          </div>
+
+        </form>
       </Modal>
 
     </main>

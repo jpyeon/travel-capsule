@@ -4,6 +4,7 @@ import {
   CreateClosetItemInput,
   UpdateClosetItemInput,
 } from '../types/closet.types';
+import { closetItemSchema, closetItemUpdateSchema } from '../../validation/closetItem.schema';
 
 export interface IClosetService {
   createClosetItem(userId: string, data: CreateClosetItemInput): Promise<ClosetItem>;
@@ -47,28 +48,10 @@ export class ClosetService implements IClosetService {
 
 // --- Validation helpers ---
 
-const VALID_LEVELS = new Set([1, 2, 3, 4, 5]);
-
 function validateCreateInput(data: CreateClosetItemInput): void {
-  if (!data.name?.trim()) throw new Error('name is required');
-  if (!data.category) throw new Error('category is required');
-  if (!data.color?.trim()) throw new Error('color is required');
-  if (!data.material?.trim()) throw new Error('material is required');
-  if (!VALID_LEVELS.has(data.warmth))
-    throw new Error('warmth must be between 1 and 5');
-  if (!VALID_LEVELS.has(data.formality))
-    throw new Error('formality must be between 1 and 5');
+  closetItemSchema.parse(data);
 }
 
 function validateUpdateInput(data: UpdateClosetItemInput): void {
-  if (data.name !== undefined && !data.name.trim())
-    throw new Error('name cannot be empty');
-  if (data.material !== undefined && !data.material.trim())
-    throw new Error('material cannot be empty');
-  if (data.warmth !== undefined && !VALID_LEVELS.has(data.warmth))
-    throw new Error('warmth must be between 1 and 5');
-  if (data.formality !== undefined && !VALID_LEVELS.has(data.formality))
-    throw new Error('formality must be between 1 and 5');
-  if (data.color !== undefined && !data.color.trim())
-    throw new Error('color cannot be empty');
+  closetItemUpdateSchema.parse(data);
 }

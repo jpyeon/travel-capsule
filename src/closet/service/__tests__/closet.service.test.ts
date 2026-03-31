@@ -68,43 +68,43 @@ describe('ClosetService.createClosetItem', () => {
   it('rejects missing name', async () => {
     await expect(
       service.createClosetItem('user-1', { ...VALID_CREATE, name: '' }),
-    ).rejects.toThrow('name is required');
+    ).rejects.toThrow();
   });
 
   it('rejects whitespace-only name', async () => {
     await expect(
       service.createClosetItem('user-1', { ...VALID_CREATE, name: '   ' }),
-    ).rejects.toThrow('name is required');
+    ).rejects.toThrow();
   });
 
   it('rejects missing category', async () => {
     await expect(
       service.createClosetItem('user-1', { ...VALID_CREATE, category: '' as never }),
-    ).rejects.toThrow('category is required');
+    ).rejects.toThrow();
   });
 
   it('rejects missing color', async () => {
     await expect(
       service.createClosetItem('user-1', { ...VALID_CREATE, color: '' }),
-    ).rejects.toThrow('color is required');
+    ).rejects.toThrow();
   });
 
   it('rejects missing material', async () => {
     await expect(
       service.createClosetItem('user-1', { ...VALID_CREATE, material: '' }),
-    ).rejects.toThrow('material is required');
+    ).rejects.toThrow();
   });
 
   it('rejects warmth out of range', async () => {
     await expect(
       service.createClosetItem('user-1', { ...VALID_CREATE, warmth: 0 as never }),
-    ).rejects.toThrow('warmth must be between 1 and 5');
+    ).rejects.toThrow();
   });
 
   it('rejects formality out of range', async () => {
     await expect(
       service.createClosetItem('user-1', { ...VALID_CREATE, formality: 6 as never }),
-    ).rejects.toThrow('formality must be between 1 and 5');
+    ).rejects.toThrow();
   });
 });
 
@@ -154,27 +154,27 @@ describe('ClosetService.updateClosetItem', () => {
   });
 
   it('rejects empty name in update', async () => {
-    await expect(service.updateClosetItem('item-1', { name: '' })).rejects.toThrow('name cannot be empty');
+    await expect(service.updateClosetItem('item-1', { name: '' })).rejects.toThrow();
   });
 
   it('rejects whitespace-only name in update', async () => {
-    await expect(service.updateClosetItem('item-1', { name: '   ' })).rejects.toThrow('name cannot be empty');
+    await expect(service.updateClosetItem('item-1', { name: '   ' })).rejects.toThrow();
   });
 
   it('rejects empty material in update', async () => {
-    await expect(service.updateClosetItem('item-1', { material: '' })).rejects.toThrow('material cannot be empty');
+    await expect(service.updateClosetItem('item-1', { material: '' })).rejects.toThrow();
   });
 
   it('rejects empty color in update', async () => {
-    await expect(service.updateClosetItem('item-1', { color: '' })).rejects.toThrow('color cannot be empty');
+    await expect(service.updateClosetItem('item-1', { color: '' })).rejects.toThrow();
   });
 
   it('rejects invalid warmth in update', async () => {
-    await expect(service.updateClosetItem('item-1', { warmth: 7 as never })).rejects.toThrow('warmth must be between 1 and 5');
+    await expect(service.updateClosetItem('item-1', { warmth: 7 as never })).rejects.toThrow();
   });
 
   it('rejects invalid formality in update', async () => {
-    await expect(service.updateClosetItem('item-1', { formality: 0 as never })).rejects.toThrow('formality must be between 1 and 5');
+    await expect(service.updateClosetItem('item-1', { formality: 0 as never })).rejects.toThrow();
   });
 });
 

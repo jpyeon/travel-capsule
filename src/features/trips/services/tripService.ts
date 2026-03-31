@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { Trip, CreateTripInput, UpdateTripInput, WeatherForecast, LuggageSize } from '../types/trip.ts';
 import { getWeatherForecast } from '../../../services/weather/weatherService';
+import { tripSchema, tripUpdateSchema } from '../../../validation/trip.schema';
 
 const TABLE = 'trips';
 
@@ -129,25 +130,11 @@ export class TripService {
 // --- Validation helpers ---
 
 function validateCreateInput(data: CreateTripInput): void {
-  if (!data.destination?.trim()) throw new Error('destination is required');
-  if (!data.startDate) throw new Error('startDate is required');
-  if (!data.endDate) throw new Error('endDate is required');
-  if (data.endDate < data.startDate) throw new Error('endDate must be on or after startDate');
-  if (!data.activities?.length) throw new Error('at least one activity is required');
-  if (!data.vibe) throw new Error('vibe is required');
-  if (data.latitude == null || data.latitude < -90 || data.latitude > 90)
-    throw new Error('latitude must be between -90 and 90');
-  if (data.longitude == null || data.longitude < -180 || data.longitude > 180)
-    throw new Error('longitude must be between -180 and 180');
+  tripSchema.parse(data);
 }
 
 function validateUpdateInput(data: UpdateTripInput): void {
-  if (data.destination !== undefined && !data.destination.trim())
-    throw new Error('destination cannot be empty');
-  if (data.startDate !== undefined && data.endDate !== undefined && data.endDate < data.startDate)
-    throw new Error('endDate must be on or after startDate');
-  if (data.activities !== undefined && data.activities.length === 0)
-    throw new Error('activities cannot be empty');
+  tripUpdateSchema.parse(data);
 }
 
 // Maps snake_case DB row → camelCase domain type
