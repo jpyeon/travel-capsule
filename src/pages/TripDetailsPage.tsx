@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../hooks/useTrip';
 import { useCloset } from '../hooks/useCloset';
@@ -90,7 +91,6 @@ const TripDetailsPage: NextPage = () => {
   const [editOpen, setEditOpen]       = useState(false);
   const [editForm, setEditForm]       = useState<EditFormState | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
-  const [editError, setEditError]     = useState<string | null>(null);
 
   if (!authLoading && !userId) {
     void router.replace('/LoginPage');
@@ -105,7 +105,6 @@ const TripDetailsPage: NextPage = () => {
   function openEdit() {
     if (!trip) return;
     setEditForm(tripToEditForm(trip));
-    setEditError(null);
     setEditOpen(true);
   }
 
@@ -117,7 +116,6 @@ const TripDetailsPage: NextPage = () => {
   async function handleEditSubmit(e: FormEvent) {
     e.preventDefault();
     if (!editForm || !tripId) return;
-    setEditError(null);
     setEditSubmitting(true);
     try {
       const input: UpdateTripInput = {
@@ -130,9 +128,10 @@ const TripDetailsPage: NextPage = () => {
         hasLaundryAccess: editForm.hasLaundryAccess,
       };
       await updateTrip(tripId, input);
+      toast.success('Trip updated');
       closeEdit();
     } catch (err) {
-      setEditError((err as Error).message);
+      toast.error((err as Error).message ?? 'Failed to update trip');
     } finally {
       setEditSubmitting(false);
     }
@@ -343,8 +342,6 @@ const TripDetailsPage: NextPage = () => {
               </label>
             </Field>
 
-            {editError && <p className="text-sm text-red-600">{editError}</p>}
-
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={closeEdit}>Cancel</Button>
               <Button type="submit" loading={editSubmitting}>Save changes</Button>
@@ -432,8 +429,6 @@ function CapsuleSection({
           </span>
         )}
       </div>
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <TravelInfoSection travelInfo={travelInfo} destination={trip.destination} />
 
@@ -637,10 +632,6 @@ function PackingVisualizationSection({
         </Button>
       </div>
 
-      {error && (
-        <p className="mb-3 text-sm text-red-600">{error}</p>
-      )}
-
       {/* Stale banner — bag type changed, prompt to regenerate */}
       {stale && imageData && !generating && (
         <div className="mb-3 flex items-center gap-2 rounded-lg bg-amber-50 px-4 py-2.5 text-xs text-amber-700">
@@ -723,8 +714,6 @@ function TravelInfoSection({
           {info ? 'Refresh' : `Tips for ${destination}`}
         </Button>
       </div>
-
-      {error && <p className="px-5 py-4 text-sm text-red-500">{error}</p>}
 
       {loading && !info && (
         <div className="space-y-2 px-5 py-4">

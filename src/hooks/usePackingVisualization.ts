@@ -4,6 +4,7 @@
 // Persists generated images via the onSave callback (fire-and-forget to DB).
 
 import { useState, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import type { PackingList } from '../features/packing';
 import type { CapsuleWardrobe } from '../features/capsule';
@@ -87,7 +88,9 @@ export function usePackingVisualization(
         onSave(url);
       }
     } catch (err) {
-      setError((err as Error).message);
+      const msg = (err as Error).message ?? 'Failed to generate image';
+      setError(msg);
+      toast.error(msg);
     } finally {
       generatingRef.current = false;
       setGenerating(false);

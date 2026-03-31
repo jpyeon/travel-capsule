@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
+import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../hooks/useTrip';
@@ -75,20 +76,17 @@ const TripPlannerPage: NextPage = () => {
 
   const [form, setForm]             = useState<TripFormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Geocoding
   const [resolvedLocation, setResolvedLocation]       = useState<GeocodingResult | null>(null);
   const [geocodingCandidates, setGeocodingCandidates] = useState<GeocodingResult[]>([]);
-  const [geocoding, setGeocoding]                     = useState(false);
-  const [geocodingError, setGeocodingError]           = useState<string | null>(null);
-  const [showManualCoords, setShowManualCoords]       = useState(false);
+  const [geocoding, setGeocoding]               = useState(false);
+  const [showManualCoords, setShowManualCoords] = useState(false);
   const geocodeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // AI description parsing
   const [description, setDescription] = useState('');
   const [parsing, setParsing]         = useState(false);
-  const [parseError, setParseError]   = useState<string | null>(null);
 
   if (!authLoading && !userId) {
     void router.replace('/LoginPage');
@@ -100,14 +98,12 @@ const TripPlannerPage: NextPage = () => {
   function resetGeocoding() {
     setResolvedLocation(null);
     setGeocodingCandidates([]);
-    setGeocodingError(null);
     setShowManualCoords(false);
   }
 
   function selectLocation(result: GeocodingResult) {
     setResolvedLocation(result);
     setGeocodingCandidates([]);
-    setGeocodingError(null);
     setForm((p) => ({
       ...p,
       latitude:  String(result.latitude),
@@ -124,18 +120,15 @@ const TripPlannerPage: NextPage = () => {
     const query = value.trim();
     if (query.length < 2) {
       setGeocodingCandidates([]);
-      setGeocodingError(null);
       return;
     }
 
     geocodeDebounceRef.current = setTimeout(async () => {
       setGeocoding(true);
-      setGeocodingError(null);
       setGeocodingCandidates([]);
       try {
         const results = await searchDestination(query);
         if (results.length === 0) {
-          setGeocodingError('Location not found.');
           setShowManualCoords(true);
         } else if (results.length === 1) {
           selectLocation(results[0]);
@@ -143,7 +136,7 @@ const TripPlannerPage: NextPage = () => {
           setGeocodingCandidates(results);
         }
       } catch {
-        setGeocodingError('Could not search location.');
+        toast.error('Failed to find destination');
         setShowManualCoords(true);
       } finally {
         setGeocoding(false);
@@ -160,7 +153,6 @@ const TripPlannerPage: NextPage = () => {
   async function handleParseDescription() {
     if (!description.trim()) return;
     setParsing(true);
-    setParseError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/gemini/parse-trip', {
@@ -178,8 +170,8 @@ const TripPlannerPage: NextPage = () => {
         activities: data.activities ?? p.activities,
         vibe: data.vibe ?? p.vibe,
       }));
-    } catch (err) {
-      setParseError((err as Error).message);
+    } catch {
+      toast.error('Failed to parse trip description');
     } finally {
       setParsing(false);
     }
@@ -188,7 +180,6 @@ const TripPlannerPage: NextPage = () => {
   // --- Submit ---
 
   async function handleSubmit() {
-    setSubmitError(null);
     setSubmitting(true);
     try {
       const lat = parseFloat(form.latitude);
@@ -208,9 +199,10 @@ const TripPlannerPage: NextPage = () => {
         hasLaundryAccess: form.hasLaundryAccess,
       };
       const trip = await createTrip(input);
+      toast.success('Trip created');
       void router.push(`/TripDetailsPage?tripId=${trip.id}`);
     } catch (err) {
-      setSubmitError((err as Error).message);
+      toast.error((err as Error).message ?? 'Failed to create trip');
     } finally {
       setSubmitting(false);
     }
@@ -267,9 +259,6 @@ const TripPlannerPage: NextPage = () => {
                   ))}
                 </div>
               )}
-              {geocodingError && !geocoding && (
-                <p className="text-xs text-red-500">{geocodingError}</p>
-              )}
             </div>
           </Field>
 
@@ -318,10 +307,7 @@ const TripPlannerPage: NextPage = () => {
                 Auto-fill
               </Button>
             </div>
-            {parseError && <p className="text-xs text-red-600">{parseError}</p>}
-            {!parseError && (
-              <p className="text-xs text-gray-400">AI will suggest activities and vibe from your description.</p>
-            )}
+            <p className="text-xs text-gray-400">AI will suggest activities and vibe from your description.</p>
           </Field>
         </div>
       ),
@@ -450,9 +436,6 @@ const TripPlannerPage: NextPage = () => {
 
       <div className="rounded-xl border border-sand-200 bg-white p-6 shadow-card">
         <StepForm steps={steps} onSubmit={handleSubmit} submitting={submitting} />
-        {submitError && (
-          <p className="mt-4 text-sm text-red-600">{submitError}</p>
-        )}
       </div>
     </main>
   );

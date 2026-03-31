@@ -4,6 +4,7 @@
 import { useState, useRef, type FormEvent, type ChangeEvent } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
+import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { uploadClosetImage } from '../lib/uploadImage';
 import { useAuth } from '../contexts/AuthContext';
@@ -90,17 +91,14 @@ const ClosetPage: NextPage = () => {
   const [editingItem, setEditingItem] = useState<ClosetItem | null>(null);
   const [form, setForm]               = useState<ClosetFormState>(EMPTY_FORM);
   const [submitting, setSubmitting]   = useState(false);
-  const [formError, setFormError]     = useState<string | null>(null);
 
   // Image upload
   const fileInputRef                    = useRef<HTMLInputElement>(null);
   const [uploading, setUploading]       = useState(false);
-  const [uploadError, setUploadError]   = useState<string | null>(null);
 
   // AI tag suggestion
   const [description, setDescription]   = useState('');
   const [suggesting, setSuggesting]     = useState(false);
-  const [suggestError, setSuggestError] = useState<string | null>(null);
 
   if (!authLoading && !userId) {
     void router.replace('/LoginPage');
@@ -110,20 +108,14 @@ const ClosetPage: NextPage = () => {
   function openAdd() {
     setEditingItem(null);
     setForm(EMPTY_FORM);
-    setFormError(null);
-    setUploadError(null);
     setDescription('');
-    setSuggestError(null);
     setModalOpen(true);
   }
 
   function openEdit(item: ClosetItem) {
     setEditingItem(item);
     setForm(itemToFormState(item));
-    setFormError(null);
-    setUploadError(null);
     setDescription('');
-    setSuggestError(null);
     setModalOpen(true);
   }
 
@@ -131,12 +123,11 @@ const ClosetPage: NextPage = () => {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
     setUploading(true);
-    setUploadError(null);
     try {
       const url = await uploadClosetImage(supabase, userId, file);
       setForm((p) => ({ ...p, imageUrl: url }));
-    } catch (err) {
-      setUploadError((err as Error).message);
+    } catch {
+      toast.error('Failed to upload image');
     } finally {
       setUploading(false);
     }
@@ -150,7 +141,6 @@ const ClosetPage: NextPage = () => {
   async function handleSuggestTags() {
     if (!description.trim()) return;
     setSuggesting(true);
-    setSuggestError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/gemini/suggest-tags', {
@@ -166,8 +156,8 @@ const ClosetPage: NextPage = () => {
       // Merge suggested tags with any the user already typed
       const merged = [...new Set([...form.tags, ...(data.tags ?? [])])];
       setForm((p) => ({ ...p, tags: merged }));
-    } catch (err) {
-      setSuggestError((err as Error).message);
+    } catch {
+      toast.error('Failed to suggest tags');
     } finally {
       setSuggesting(false);
     }
@@ -175,7 +165,6 @@ const ClosetPage: NextPage = () => {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setFormError(null);
     setSubmitting(true);
 
     try {
@@ -204,9 +193,10 @@ const ClosetPage: NextPage = () => {
         };
         await addItem(input);
       }
+      toast.success(editingItem ? 'Item updated' : 'Item added');
       closeModal();
     } catch (err) {
-      setFormError((err as Error).message);
+      toast.error((err as Error).message ?? 'Failed to save item');
     } finally {
       setSubmitting(false);
     }
@@ -333,10 +323,7 @@ const ClosetPage: NextPage = () => {
                 Suggest tags
               </Button>
             </div>
-            {suggestError && <p className="text-xs text-red-600 mt-1">{suggestError}</p>}
-            {!suggestError && (
-              <p className="text-xs text-sand-400 mt-1">AI will suggest tags based on your description.</p>
-            )}
+            <p className="text-xs text-sand-400 mt-1">AI will suggest tags based on your description.</p>
           </Field>
 
           <Field label="Tags">
@@ -382,10 +369,7 @@ const ClosetPage: NextPage = () => {
                 </button>
               )}
             </div>
-            {uploadError && <p className="text-xs text-red-600 mt-1">{uploadError}</p>}
           </Field>
-
-          {formError && <p className="text-sm text-red-600">{formError}</p>}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>

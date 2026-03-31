@@ -3,6 +3,7 @@
 // Not persisted — refetch as needed.
 
 import { useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { dateRange } from '../utils/date.utils';
 import type { Trip } from '../features/trips/types/trip';
@@ -53,7 +54,9 @@ export function useTravelInfo(trip: Trip): UseTravelInfoReturn {
         considerations: data.considerations ?? [],
       });
     } catch (err) {
-      setError((err as Error).message);
+      const msg = (err as Error).message ?? 'Failed to load travel info';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
