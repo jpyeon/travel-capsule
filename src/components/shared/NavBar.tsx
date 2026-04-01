@@ -13,10 +13,10 @@ export function NavBar() {
   const { user, userId, signOut } = useAuth();
 
   return (
-    <nav className="border-b-2 border-sand-200 bg-white px-4 sm:px-8 py-3 flex items-center justify-between">
+    <nav className="border-b-2 border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 px-4 sm:px-8 py-3 flex items-center justify-between">
       <Link
         href="/"
-        className="text-sm font-bold tracking-widest uppercase text-gray-900 hover:text-accent-600 transition-colors"
+        className="text-sm font-bold tracking-widest uppercase text-gray-900 dark:text-night-50 hover:text-accent-600 transition-colors"
       >
         Travel Capsule
       </Link>
@@ -46,7 +46,7 @@ export function NavBar() {
         )}
 
         {userId ? (
-          <div className="flex items-center gap-3 border-l border-sand-200 pl-6">
+          <div className="flex items-center gap-3 border-l border-sand-200 dark:border-night-100 pl-6">
             <span className="hidden sm:inline text-xs text-sand-500">{user?.email}</span>
             <button
               onClick={signOut}
