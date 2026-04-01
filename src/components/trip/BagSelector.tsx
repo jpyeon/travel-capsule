@@ -25,7 +25,7 @@ export function BagSelector({ value, onChange, disabled }: BagSelectorProps) {
             'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
             value === opt.value
               ? 'border-accent-400 bg-accent-50 text-accent-700'
-              : 'border-sand-200 bg-white text-sand-500 hover:border-sand-300',
+              : 'border-sand-200 bg-white dark:bg-night-200 dark:border-night-100 text-sand-500 dark:text-sand-400 hover:border-sand-300 dark:hover:border-night-100',
             disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
           ].join(' ')}
         >

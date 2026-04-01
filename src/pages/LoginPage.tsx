@@ -64,7 +64,7 @@ const LoginPage: NextPage = () => {
   return (
     <main className="flex min-h-[80vh] items-center justify-center p-8">
       <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-2xl font-bold text-center">
+        <h1 className="mb-6 text-2xl font-bold text-center dark:text-night-50">
           {mode === 'login' ? 'Sign in' : 'Create account'}
         </h1>
 
@@ -75,7 +75,7 @@ const LoginPage: NextPage = () => {
         ) : (
           <form onSubmit={rhfHandleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-600">Email</label>
+              <label className="text-xs font-medium text-gray-600 dark:text-sand-400">Email</label>
               <input
                 type="email"
                 {...register('email')}
@@ -109,7 +109,7 @@ const LoginPage: NextPage = () => {
                   <button
                     type="button"
                     onClick={() => { setMode('signup'); setError(null); }}
-                    className="font-medium text-black hover:underline"
+                    className="font-medium text-black dark:text-night-50 hover:underline"
                   >
                     Sign up
                   </button>
@@ -120,7 +120,7 @@ const LoginPage: NextPage = () => {
                   <button
                     type="button"
                     onClick={() => { setMode('login'); setError(null); setSignupSuccess(false); }}
-                    className="font-medium text-black hover:underline"
+                    className="font-medium text-black dark:text-night-50 hover:underline"
                   >
                     Sign in
                   </button>
@@ -137,4 +137,4 @@ const LoginPage: NextPage = () => {
 export default LoginPage;
 
 const INPUT_CLS_BASE =
-  'rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-1';
+  'rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-1 dark:bg-night-200 dark:text-night-50 dark:placeholder:text-sand-500 dark:border-night-100 dark:focus:ring-night-50';

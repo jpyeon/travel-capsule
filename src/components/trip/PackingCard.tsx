@@ -18,7 +18,7 @@ const PRIORITY_LABEL: Record<PackingPriority, string> = {
   optional: 'Nice to have',
 };
 const PRIORITY_COLOR: Record<PackingPriority, string> = {
-  essential: 'text-gray-900',
+  essential: 'text-gray-900 dark:text-night-50',
   recommended: 'text-sand-600',
   optional: 'text-sand-400',
 };
@@ -50,11 +50,11 @@ export function PackingCard({ packingList, capsule, luggageSize, packedItems, on
   const toiletriesByPriority = groupBy(packingList.toiletries, (e) => e.priority);
 
   return (
-    <div className="rounded-xl border border-sand-200 bg-white shadow-card">
+    <div className="rounded-xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 shadow-card">
       {/* Header */}
-      <div className="flex items-baseline justify-between gap-3 rounded-t-xl border-b border-sand-200 bg-gradient-to-r from-sand-50 to-white px-5 py-4">
+      <div className="flex items-baseline justify-between gap-3 rounded-t-xl border-b border-sand-200 dark:border-night-100 bg-gradient-to-r from-sand-50 to-white dark:from-night-200 dark:to-night-200 px-5 py-4">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-base font-bold text-gray-900">Packing list</h2>
+          <h2 className="text-base font-bold text-gray-900 dark:text-night-50">Packing list</h2>
           <span className="text-sm text-sand-400">{packedItems.size} / {totalCount} packed</span>
         </div>
         <button
@@ -179,10 +179,10 @@ function PackingRow({
           'h-4 w-4 flex-shrink-0 rounded-full border-2 transition-all duration-150',
           packed
             ? 'border-accent-500 bg-accent-500 scale-90'
-            : 'border-sand-300 bg-white hover:border-accent-400',
+            : 'border-sand-300 bg-white dark:bg-night-200 dark:border-night-100 hover:border-accent-400',
         ].join(' ')}
       />
-      <span className={packed ? 'text-sand-400 line-through' : 'text-gray-700'}>
+      <span className={packed ? 'text-sand-400 line-through' : 'text-gray-700 dark:text-sand-300'}>
         {children}
       </span>
     </li>
@@ -207,7 +207,7 @@ function CapacityBar({
         <span className={`text-xs font-semibold ${style.text}`}>{style.label}</span>
         <span className={`text-xs ${style.text}`}>{percentageUsed}% full</span>
       </div>
-      <div className="h-2 w-full rounded-full bg-white/60">
+      <div className="h-2 w-full rounded-full bg-white/60 dark:bg-night-300/60">
         <div
           className={`h-2 rounded-full transition-all duration-300 ${
             status === 'overpacked' ? 'bg-amber-400' : status === 'optimal' ? 'bg-green-400' : 'bg-blue-300'

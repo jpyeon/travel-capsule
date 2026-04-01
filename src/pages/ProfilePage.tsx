@@ -1,5 +1,6 @@
 import type { NextPage } from 'next';
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfileImage } from '../hooks/useProfileImage';
@@ -9,6 +10,9 @@ const ProfilePage: NextPage = () => {
   const { userId } = useAuth();
   const { imageUrl, loading, uploading, error, upload } = useProfileImage(userId!);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -24,25 +28,25 @@ const ProfilePage: NextPage = () => {
   }, [upload, error]);
 
   return (
-    <div className="min-h-screen bg-sand-50">
+    <div className="min-h-screen bg-sand-50 dark:bg-night-300">
       <div className="mx-auto max-w-lg px-4 py-12">
-        <h1 className="mb-8 text-2xl font-semibold text-gray-900">Profile</h1>
+        <h1 className="mb-8 text-2xl font-semibold text-gray-900 dark:text-night-50">Profile</h1>
 
-        <div className="rounded-2xl border border-sand-200 bg-white p-8 shadow-card">
-          <h2 className="mb-6 text-base font-medium text-gray-700">Profile photo</h2>
+        <div className="rounded-2xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 p-8 shadow-card">
+          <h2 className="mb-6 text-base font-medium text-gray-700 dark:text-sand-300">Profile photo</h2>
 
           {/* Photo preview */}
           <div className="mb-6 flex justify-center">
             {loading ? (
-              <div className="h-40 w-28 animate-pulse rounded-xl bg-sand-100" />
+              <div className="h-40 w-28 animate-pulse rounded-xl bg-sand-100 dark:bg-night-200" />
             ) : imageUrl ? (
               <img
                 src={imageUrl}
                 alt="Your profile photo"
-                className="h-40 w-28 rounded-xl object-cover border border-sand-200 shadow-sm"
+                className="h-40 w-28 rounded-xl object-cover border border-sand-200 dark:border-night-100 shadow-sm"
               />
             ) : (
-              <div className="flex h-40 w-28 items-center justify-center rounded-xl border-2 border-dashed border-sand-300 bg-sand-50">
+              <div className="flex h-40 w-28 items-center justify-center rounded-xl border-2 border-dashed border-sand-300 dark:border-night-100 bg-sand-50 dark:bg-night-200">
                 <span className="text-xs text-sand-400 text-center px-2">No photo yet</span>
               </div>
             )}
@@ -75,6 +79,33 @@ const ProfilePage: NextPage = () => {
           {error && !uploading && (
             <p className="mt-4 text-center text-sm text-red-500">{error}</p>
           )}
+        </div>
+
+        {/* Preferences */}
+        <div className="mt-6 rounded-2xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 p-8 shadow-card">
+          <h2 className="mb-6 text-base font-medium text-gray-700 dark:text-sand-300">Preferences</h2>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-700 dark:text-sand-300">Appearance</span>
+            {mounted && (
+              <div className="flex gap-1 rounded-lg border border-sand-200 dark:border-night-100 p-0.5">
+                {(['system', 'light', 'dark'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTheme(t)}
+                    className={[
+                      'rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors',
+                      theme === t
+                        ? 'bg-accent-500 text-white'
+                        : 'text-sand-500 hover:text-gray-700 dark:hover:text-sand-300',
+                    ].join(' ')}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <p className="mt-4 text-center text-xs text-sand-400">

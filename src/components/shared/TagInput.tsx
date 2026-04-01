@@ -82,7 +82,7 @@ export function TagInput({ tags, onChange, presets = [], placeholder = 'Type a t
               key={preset}
               type="button"
               onClick={() => addTag(preset)}
-              className="rounded-full border border-sand-300 bg-sand-50 px-2.5 py-0.5 text-xs text-gray-500 hover:border-accent-300 hover:bg-accent-50 hover:text-accent-700 transition-colors"
+              className="rounded-full border border-sand-300 bg-sand-50 px-2.5 py-0.5 text-xs text-gray-500 hover:border-accent-300 hover:bg-accent-50 hover:text-accent-700 transition-colors dark:border-night-100 dark:bg-night-200 dark:text-sand-400"
             >
               + {preset}
             </button>

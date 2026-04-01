@@ -245,7 +245,7 @@ const TripPlannerPage: NextPage = () => {
               )}
               {resolvedLocation && !geocoding && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-600">
+                  <span className="text-xs text-gray-600 dark:text-sand-400">
                     {resolvedLocation.name}{resolvedLocation.region ? `, ${resolvedLocation.region}` : ''}, {resolvedLocation.country}
                   </span>
                   <button
@@ -265,7 +265,7 @@ const TripPlannerPage: NextPage = () => {
                       key={i}
                       type="button"
                       onClick={() => selectLocation(c)}
-                      className="block w-full text-left text-xs rounded border border-gray-200 px-2 py-1.5 hover:bg-gray-50"
+                      className="block w-full text-left text-xs rounded border border-gray-200 dark:border-night-100 dark:bg-night-200 dark:text-sand-400 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-night-100"
                     >
                       {c.name}{c.region ? `, ${c.region}` : ''}, {c.country}
                     </button>
@@ -397,7 +397,7 @@ const TripPlannerPage: NextPage = () => {
                     'flex-1 rounded-lg border px-3 py-2 text-left transition-colors',
                     watchLuggageSize === opt.value
                       ? 'border-accent-400 bg-accent-50 text-accent-700'
-                      : 'border-sand-200 bg-white text-gray-600 hover:border-sand-300',
+                      : 'border-sand-200 bg-white dark:bg-night-200 dark:border-night-100 text-gray-600 dark:text-sand-400 hover:border-sand-300 dark:hover:border-night-100',
                   ].join(' ')}
                 >
                   <p className="text-sm font-medium">{opt.label}</p>
@@ -423,7 +423,7 @@ const TripPlannerPage: NextPage = () => {
                   watchHasLaundry ? 'translate-x-5' : 'translate-x-0.5',
                 ].join(' ')} />
               </div>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 dark:text-sand-400">
                 {watchHasLaundry ? 'Yes — I can do laundry' : 'No — I need to pack for the full trip'}
               </span>
             </label>
@@ -445,10 +445,10 @@ const TripPlannerPage: NextPage = () => {
         >
           ← Back
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">Plan a trip</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-night-50">Plan a trip</h1>
       </div>
 
-      <div className="rounded-xl border border-sand-200 bg-white p-6 shadow-card">
+      <div className="rounded-xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 p-6 shadow-card">
         <StepForm steps={steps} onSubmit={handleSubmit} submitting={submitting} />
       </div>
     </main>

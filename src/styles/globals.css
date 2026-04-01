@@ -11,6 +11,10 @@
     background-color: #daeee9;
     color: #243837;
   }
+  .dark ::selection {
+    background-color: #243837;
+    color: #e8e0d0;
+  }
 }
 
 @media print {

@@ -24,3 +24,9 @@ next-env.d.ts
 
 # Claude Code
 .claude/
+
+# Git worktrees
+.worktrees/
+
+# Superpowers brainstorm sessions
+.superpowers/
