@@ -19,11 +19,11 @@ export function TripCard({ trip, onEdit, onDelete }: TripCardProps) {
       : null;
 
   return (
-    <div className="group flex flex-col gap-3 rounded-xl border border-sand-200 bg-white p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5">
+    <div className="group flex flex-col gap-3 rounded-xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5">
 
       {/* Destination + dates */}
       <div>
-        <h3 className="font-semibold text-gray-900">{trip.destination}</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-night-50">{trip.destination}</h3>
         <p className="text-sm text-sand-500">
           {formatDateShort(trip.startDate)} – {formatDateShort(trip.endDate)}
         </p>
@@ -31,7 +31,7 @@ export function TripCard({ trip, onEdit, onDelete }: TripCardProps) {
 
       {/* Vibe + weather */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-sand-200 bg-sand-50 px-2.5 py-0.5 text-xs font-medium text-gray-600 capitalize">
+        <span className="rounded-full border border-sand-200 dark:border-night-100 bg-sand-50 dark:bg-night-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-sand-400 capitalize">
           {trip.vibe}
         </span>
         {avgTemp !== null && (

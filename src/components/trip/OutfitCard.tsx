@@ -33,7 +33,7 @@ export function OutfitCard({ outfit, itemById, destination, vibe, initialUrl, on
   const hasItems = outfit.items.length > 0;
 
   return (
-    <div className="rounded-xl border border-sand-200 bg-white shadow-card overflow-hidden">
+    <div className="rounded-xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 shadow-card overflow-hidden">
       <div className="p-4">
         {/* Activity badge */}
         <span className="mb-3 inline-block rounded-full bg-accent-50 border border-accent-200 px-2.5 py-0.5 text-xs font-medium text-accent-700 capitalize">
@@ -50,13 +50,13 @@ export function OutfitCard({ outfit, itemById, destination, vibe, initialUrl, on
               return (
                 <div
                   key={item.id}
-                  className="flex items-center gap-1.5 rounded-lg border border-sand-200 bg-sand-50 px-2.5 py-1 text-xs"
+                  className="flex items-center gap-1.5 rounded-lg border border-sand-200 dark:border-night-100 bg-sand-50 dark:bg-night-100 px-2.5 py-1 text-xs"
                 >
                   <span
-                    className="h-3 w-3 flex-shrink-0 rounded-full border border-sand-300"
+                    className="h-3 w-3 flex-shrink-0 rounded-full border border-sand-300 dark:border-night-100"
                     style={{ backgroundColor: full?.color ?? item.color }}
                   />
-                  <span className="text-gray-700">{full?.name ?? item.category}</span>
+                  <span className="text-gray-700 dark:text-sand-300">{full?.name ?? item.category}</span>
                 </div>
               );
             })
@@ -74,7 +74,7 @@ export function OutfitCard({ outfit, itemById, destination, vibe, initialUrl, on
 
         {/* Visualize button */}
         {hasItems && (
-          <div className="mt-3 flex flex-col gap-1 border-t border-sand-100 pt-3">
+          <div className="mt-3 flex flex-col gap-1 border-t border-sand-100 dark:border-night-100 pt-3">
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
@@ -104,13 +104,13 @@ export function OutfitCard({ outfit, itemById, destination, vibe, initialUrl, on
 
       {/* Generated image */}
       {generating && !imageData && (
-        <div className="h-48 w-full animate-pulse bg-sand-100" />
+        <div className="h-48 w-full animate-pulse bg-sand-100 dark:bg-night-200" />
       )}
       {imageData && (
         <img
           src={imageData}
           alt={`${outfit.activity} outfit flat-lay`}
-          className="w-full object-cover border-t border-sand-100"
+          className="w-full object-cover border-t border-sand-100 dark:border-night-100"
         />
       )}
     </div>

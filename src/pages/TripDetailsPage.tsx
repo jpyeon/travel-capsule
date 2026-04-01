@@ -155,9 +155,9 @@ const TripDetailsPage: NextPage = () => {
   if (loading) {
     return (
       <main className="max-w-4xl mx-auto p-6 space-y-4">
-        <div className="h-8 w-64 animate-pulse rounded-lg bg-sand-100" />
-        <div className="h-40 animate-pulse rounded-xl bg-sand-100" />
-        <div className="h-32 animate-pulse rounded-xl bg-sand-100" />
+        <div className="h-8 w-64 animate-pulse rounded-lg bg-sand-100 dark:bg-night-200" />
+        <div className="h-40 animate-pulse rounded-xl bg-sand-100 dark:bg-night-200" />
+        <div className="h-32 animate-pulse rounded-xl bg-sand-100 dark:bg-night-200" />
       </main>
     );
   }
@@ -166,8 +166,8 @@ const TripDetailsPage: NextPage = () => {
   if (!trip && !tripsLoading) {
     return (
       <main className="max-w-4xl mx-auto p-6">
-        <div className="rounded-xl border border-sand-200 bg-white px-6 py-12 text-center shadow-card">
-          <p className="text-sm font-medium text-gray-700">Trip not found.</p>
+        <div className="rounded-xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 px-6 py-12 text-center shadow-card">
+          <p className="text-sm font-medium text-gray-700 dark:text-sand-300">Trip not found.</p>
           <p className="mt-1 text-sm text-sand-500">This trip may have been deleted.</p>
           <Button onClick={() => router.replace('/DashboardPage')} className="mt-4">
             Back to trips
@@ -187,7 +187,7 @@ const TripDetailsPage: NextPage = () => {
       {/* Sticky header                                                       */}
       {/* ------------------------------------------------------------------ */}
       {trip && (
-        <div className="sticky top-0 z-20 bg-white border-b border-sand-200 shadow-[0_1px_4px_0_rgb(0_0_0/0.06)]">
+        <div className="sticky top-0 z-20 bg-white dark:bg-night-200 border-b border-sand-200 dark:border-night-100 shadow-[0_1px_4px_0_rgb(0_0_0/0.06)]">
           <div className="max-w-4xl mx-auto px-6">
 
             {/* Row 1: back link + actions */}
@@ -207,7 +207,7 @@ const TripDetailsPage: NextPage = () => {
 
             {/* Row 2: destination + meta */}
             <div className="pb-2">
-              <h1 className="text-xl font-semibold text-gray-900 leading-snug">
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-night-50 leading-snug">
                 {trip.destination}
               </h1>
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -257,7 +257,7 @@ const TripDetailsPage: NextPage = () => {
                     'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
                     activeTab === tab.id
                       ? 'border-accent-500 text-accent-600'
-                      : 'border-transparent text-sand-500 hover:text-gray-700 hover:border-sand-300',
+                      : 'border-transparent text-sand-500 hover:text-gray-700 dark:hover:text-sand-300 hover:border-sand-300',
                   ].join(' ')}
                 >
                   {tab.label}
@@ -360,7 +360,7 @@ const TripDetailsPage: NextPage = () => {
                       'flex-1 rounded-lg border px-3 py-2 text-sm transition-colors',
                       editLuggageSize === opt.value
                         ? 'border-accent-400 bg-accent-50 text-accent-700 font-medium'
-                        : 'border-sand-200 bg-white text-gray-600 hover:border-sand-300',
+                        : 'border-sand-200 bg-white dark:bg-night-200 dark:border-night-100 text-gray-600 dark:text-sand-400 hover:border-sand-300 dark:hover:border-night-100',
                     ].join(' ')}
                   >
                     {opt.label}
@@ -389,7 +389,7 @@ const TripDetailsPage: NextPage = () => {
                     ].join(' ')}
                   />
                 </div>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-600 dark:text-sand-400">
                   {editHasLaundry ? 'Yes — I can do laundry' : 'No — packing for full trip'}
                 </span>
               </label>
@@ -442,8 +442,8 @@ function CapsuleSection({
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-10 w-48 animate-pulse rounded-lg bg-sand-100" />
-        <div className="h-40 animate-pulse rounded-xl bg-sand-100" />
+        <div className="h-10 w-48 animate-pulse rounded-lg bg-sand-100 dark:bg-night-200" />
+        <div className="h-40 animate-pulse rounded-xl bg-sand-100 dark:bg-night-200" />
       </div>
     );
   }
@@ -524,7 +524,7 @@ function OverviewTab({
       {/* Weather forecast — horizontal scroll strip */}
       {trip.weatherForecast.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">Weather forecast</h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-sand-300">Weather forecast</h2>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {trip.weatherForecast.map((forecast) => (
               <WeatherCard key={forecast.date} forecast={forecast} />
@@ -550,9 +550,9 @@ function StatCard({
   capitalize?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-sand-200 bg-white px-4 py-3 shadow-card">
+    <div className="rounded-xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 px-4 py-3 shadow-card">
       <p className="text-xs text-sand-400 mb-1">{label}</p>
-      <p className={`text-sm font-medium text-gray-800 ${capitalize ? 'capitalize' : ''}`}>
+      <p className={`text-sm font-medium text-gray-800 dark:text-night-50 ${capitalize ? 'capitalize' : ''}`}>
         {value}
       </p>
     </div>
@@ -564,7 +564,7 @@ function WeatherCard({ forecast }: { forecast: WeatherForecast }) {
   const icon = rain >= 70 ? '🌧' : rain >= 40 ? '⛅' : '☀️';
 
   return (
-    <div className="flex-shrink-0 w-20 rounded-xl border border-sand-200 bg-white px-3 py-3 shadow-card text-center">
+    <div className="flex-shrink-0 w-20 rounded-xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 px-3 py-3 shadow-card text-center">
       <p className="text-xs text-sand-400 mb-1">
         {new Date(forecast.date).toLocaleDateString('en-GB', {
           weekday: 'short',
@@ -572,7 +572,7 @@ function WeatherCard({ forecast }: { forecast: WeatherForecast }) {
         })}
       </p>
       <p className="text-lg leading-none mb-1.5">{icon}</p>
-      <p className="text-xs font-medium text-gray-800">{forecast.temperatureHigh}°</p>
+      <p className="text-xs font-medium text-gray-800 dark:text-night-50">{forecast.temperatureHigh}°</p>
       <p className="text-xs text-sand-400">{forecast.temperatureLow}°</p>
       {rain > 0 && <p className="mt-1 text-[10px] text-blue-400">{rain}%</p>}
     </div>
@@ -637,7 +637,7 @@ function CapsuleTab({
 function CapsuleItemsGrid({ capsule }: { capsule: CapsuleWardrobe }) {
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold text-gray-700">
+      <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-sand-300">
         Your capsule{' '}
         <span className="font-normal text-sand-400">({capsule.items.length} items)</span>
       </h2>
@@ -647,15 +647,15 @@ function CapsuleItemsGrid({ capsule }: { capsule: CapsuleWardrobe }) {
           return (
             <div
               key={item.id}
-              className="flex flex-col gap-2 rounded-xl border border-sand-200 bg-white p-3 shadow-card"
+              className="flex flex-col gap-2 rounded-xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 p-3 shadow-card"
             >
               <div className="flex items-center gap-2">
                 <div
-                  className="h-6 w-6 flex-shrink-0 rounded-full border border-sand-200"
+                  className="h-6 w-6 flex-shrink-0 rounded-full border border-sand-200 dark:border-night-100"
                   style={{ backgroundColor: item.color }}
                 />
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-gray-700">{item.name}</p>
+                  <p className="truncate text-xs font-medium text-gray-700 dark:text-sand-300">{item.name}</p>
                   <span className="text-xs capitalize text-sand-400">{item.category}</span>
                 </div>
               </div>
@@ -665,7 +665,7 @@ function CapsuleItemsGrid({ capsule }: { capsule: CapsuleWardrobe }) {
                   {item.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded bg-sand-100 px-1.5 py-0.5 text-xs text-sand-500"
+                      className="rounded bg-sand-100 dark:bg-night-100 px-1.5 py-0.5 text-xs text-sand-500"
                     >
                       {tag}
                     </span>
@@ -737,7 +737,7 @@ function OutfitsTab({
       {[...byDate.entries()].map(([date, dayOutfits]) => (
         <div key={date}>
           <div className="mb-3 flex items-baseline gap-3">
-            <p className="text-sm font-semibold text-gray-800">{formatDateLong(date)}</p>
+            <p className="text-sm font-semibold text-gray-800 dark:text-night-50">{formatDateLong(date)}</p>
             <span className="text-xs text-sand-400">
               {dayOutfits[0]?.weatherContext.temperatureHigh}°C
               {' · '}{dayOutfits[0]?.weatherContext.rainProbability}% rain
@@ -858,7 +858,7 @@ function PackingVisualizationSection({
   return (
     <section>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h2 className="text-sm font-semibold text-gray-700">Packing visualization</h2>
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-sand-300">Packing visualization</h2>
         <BagSelector value={bagType} onChange={setBagType} disabled={generating} />
         <Button
           variant={imageData && !stale ? 'secondary' : 'primary'}
@@ -877,7 +877,7 @@ function PackingVisualizationSection({
       )}
 
       {generating && !imageData && (
-        <div className="flex h-72 w-full items-center justify-center rounded-xl bg-sand-100">
+        <div className="flex h-72 w-full items-center justify-center rounded-xl bg-sand-100 dark:bg-night-200">
           <div className="text-center">
             <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-2 border-sand-300 border-t-accent-500" />
             <p className="text-xs text-sand-400">Generating {bagType} visualization…</p>
@@ -904,7 +904,7 @@ function PackingVisualizationSection({
       )}
 
       {imageData && !generating && (
-        <div className="overflow-hidden rounded-xl border border-sand-200 shadow-card">
+        <div className="overflow-hidden rounded-xl border border-sand-200 dark:border-night-100 shadow-card">
           <img
             src={imageData}
             alt={`Packing visualization for ${destination}`}
@@ -953,9 +953,9 @@ function TravelInfoSection({
   }, [loading]);
 
   return (
-    <section className="rounded-xl border border-sand-200 bg-white shadow-card overflow-hidden">
-      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-sand-100">
-        <h2 className="text-sm font-semibold text-gray-700">Travel info</h2>
+    <section className="rounded-xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 shadow-card overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-sand-100 dark:border-night-100">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-sand-300">Travel info</h2>
         <Button
           variant="secondary"
           onClick={fetch}
@@ -972,7 +972,7 @@ function TravelInfoSection({
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="h-4 animate-pulse rounded bg-sand-100"
+              className="h-4 animate-pulse rounded bg-sand-100 dark:bg-night-100"
               style={{ width: `${60 + i * 10}%` }}
             />
           ))}
@@ -981,14 +981,14 @@ function TravelInfoSection({
       )}
 
       {info && (
-        <div className="grid gap-0 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-sand-100">
+        <div className="grid gap-0 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-sand-100 dark:divide-night-100">
           <div className="px-5 py-4">
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-sand-400">
               Don&apos;t bother packing
             </h3>
             <ul className="space-y-2">
               {info.savings.map((tip, i) => (
-                <li key={i} className="flex gap-2 text-sm text-gray-700">
+                <li key={i} className="flex gap-2 text-sm text-gray-700 dark:text-sand-300">
                   <span className="mt-0.5 text-green-500 flex-shrink-0">✓</span>
                   {tip}
                 </li>
@@ -1001,7 +1001,7 @@ function TravelInfoSection({
             </h3>
             <ul className="space-y-2">
               {info.considerations.map((tip, i) => (
-                <li key={i} className="flex gap-2 text-sm text-gray-700">
+                <li key={i} className="flex gap-2 text-sm text-gray-700 dark:text-sand-300">
                   <span className="mt-0.5 text-amber-400 flex-shrink-0">!</span>
                   {tip}
                 </li>
@@ -1024,7 +1024,7 @@ function TravelInfoSection({
         <div className="px-5 py-4">
           <button
             onClick={retry}
-            className="rounded-lg border border-sand-200 bg-white px-4 py-2 text-sm text-gray-700 hover:border-sand-300 transition-colors"
+            className="rounded-lg border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 px-4 py-2 text-sm text-gray-700 dark:text-sand-300 hover:border-sand-300 dark:hover:border-night-100 transition-colors"
           >
             Retry
           </button>
@@ -1050,8 +1050,8 @@ function EmptyState({
   action?: { label: string; href: string };
 }) {
   return (
-    <div className="rounded-xl border border-sand-200 bg-white px-6 py-12 text-center shadow-card">
-      <p className="text-sm font-medium text-gray-700">{title}</p>
+    <div className="rounded-xl border border-sand-200 dark:border-night-100 bg-white dark:bg-night-200 px-6 py-12 text-center shadow-card">
+      <p className="text-sm font-medium text-gray-700 dark:text-sand-300">{title}</p>
       <p className="mt-1 text-sm text-sand-500 max-w-sm mx-auto">{description}</p>
       {hint && <p className="mt-1 text-xs text-sand-400">{hint}</p>}
       {action && (
