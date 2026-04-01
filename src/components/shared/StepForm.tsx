@@ -57,7 +57,7 @@ export function StepForm({ steps, onSubmit, submitting = false, submitLabel = 'C
                   'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors',
                   active  ? 'bg-accent-500 text-white ring-2 ring-accent-200 ring-offset-1'  : '',
                   done    ? 'bg-accent-100 text-accent-700' : '',
-                  pending ? 'bg-sand-100 text-sand-400' : '',
+                  pending ? 'bg-sand-100 dark:bg-night-100 text-sand-400' : '',
                 ].join(' ')}
               >
                 {done ? '✓' : i + 1}
@@ -65,7 +65,7 @@ export function StepForm({ steps, onSubmit, submitting = false, submitLabel = 'C
               <span
                 className={[
                   'text-sm',
-                  active  ? 'font-semibold text-gray-900' : '',
+                  active  ? 'font-semibold text-gray-900 dark:text-night-50' : '',
                   done    ? 'text-accent-600' : '',
                   pending ? 'text-sand-400' : '',
                 ].join(' ')}
@@ -81,7 +81,7 @@ export function StepForm({ steps, onSubmit, submitting = false, submitLabel = 'C
       </div>
 
       {/* Divider */}
-      <div className="border-t border-sand-200" />
+      <div className="border-t border-sand-200 dark:border-night-100" />
 
       {/* Active step content */}
       <div className="space-y-4">
