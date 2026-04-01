@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
+  darkMode: 'class',
   content: [
     './src/pages/**/*.{ts,tsx}',
     './src/components/**/*.{ts,tsx}',
@@ -30,6 +31,13 @@ const config: Config = {
           300: '#d4cdc1',
           400: '#bbb4a6',
           500: '#9e978a',
+        },
+        // Warm dark browns — dark mode surfaces
+        night: {
+          50:  '#e8e0d0',  // primary text in dark mode
+          100: '#2e2b25',  // borders, tag/badge backgrounds
+          200: '#242018',  // card and surface backgrounds
+          300: '#1c1a17',  // page background
         },
       },
       boxShadow: {
